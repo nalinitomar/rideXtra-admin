@@ -58,7 +58,7 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
   const handleLogout = async () => {
     try {
       const data = await logout();
-      if (data.success === true && data.message === "Admin Logout") {
+      if (data.status === true && data.statusCode === 200) {
         toast.success(data.message || "Admin Logout");
         Cookies.remove("token");
         navigate("/authentication/sign-in");
