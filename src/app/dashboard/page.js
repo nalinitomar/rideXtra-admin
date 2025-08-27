@@ -48,8 +48,8 @@ export default function RiderAdminDashboard() {
   useEffect(() => {
     // Simulate API call for riders
     const riders = [
-      { id: 1, name: 'Rajesh Kumar', status: 'active', deliveries: 42, rating: 4.8, vehicle: 'Bike', earnings: 12500 },
-      { id: 2, name: 'Suresh Patel', status: 'active', deliveries: 38, rating: 4.7, vehicle: 'Bike', earnings: 11200 },
+      { id: 1, name: 'Rajesh Kumar', status: 'active', deliveries: 42, rating: 4.8, vehicle: 'BASIC', earnings: 12500 },
+      { id: 2, name: 'Suresh Patel', status: 'active', deliveries: 38, rating: 4.7, vehicle: 'LEXURUY', earnings: 11200 },
       { id: 3, name: 'Amit Sharma', status: 'inactive', deliveries: 25, rating: 4.5, vehicle: 'Bike', earnings: 8500 },
       { id: 4, name: 'Vijay Singh', status: 'active', deliveries: 31, rating: 4.6, vehicle: 'Scooter', earnings: 9800 },
       { id: 5, name: 'Deepak Yadav', status: 'busy', deliveries: 29, rating: 4.4, vehicle: 'Bike', earnings: 9200 },
@@ -71,14 +71,14 @@ export default function RiderAdminDashboard() {
   // Stats data
   const stats = [
     {
-      title: 'Total Riders',
-      value: '48',
+      title: 'Total Rides',
+      value: '7680',
       change: '+5%',
-      icon: <FiUsers className="h-6 w-6" />,
+      icon: <FiTruck className="h-6 w-6" />,
       color: 'bg-blue-500'
     },
     {
-      title: 'Active Deliveries',
+      title: 'Active Rides',
       value: '27',
       change: '+12%',
       icon: <FiPackage className="h-6 w-6" />,
@@ -93,7 +93,7 @@ export default function RiderAdminDashboard() {
     },
     {
       title: 'Total Revenue',
-      value: '₹42,580',
+      value: '42,580',
       change: '+15%',
       icon: <FiDollarSign className="h-6 w-6" />,
       color: 'bg-amber-500'
@@ -125,7 +125,7 @@ export default function RiderAdminDashboard() {
 
   // Chart data for rider performance
   const performanceChartData = {
-    labels: ['Rajesh', 'Suresh', 'Amit', 'Vijay', 'Deepak'],
+    labels: ['Michael', 'James', 'William', 'David', 'John'],
     datasets: [
       {
         label: 'Deliveries',

@@ -35,3 +35,18 @@ export async function getAllUserTripById(id) {
     method: 'GET',
   });
 }
+
+export async function changeStatus(id , block , accountDelete) {
+  let body ={} //block,
+  if(accountDelete){
+    body.id = id  
+    body.deleted = accountDelete
+  }else{
+    body.id = id  
+    body.block = block
+  }
+  return authorizedFetch(`/admin/change-user-status`, {
+    method: 'POST',
+     body: JSON.stringify(body),
+  });
+}

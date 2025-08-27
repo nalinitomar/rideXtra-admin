@@ -24,13 +24,24 @@ import {
     FiMap,
     FiTrendingUp,
     FiLock,
+    FiEye,
 } from 'react-icons/fi';
 import Snackbar from '@/components/layout/Snackbar';
+import Link from 'next/link';
+import { useUserStore } from '@/store/userStore'; // Assuming you have a user store
 
 export default function UserProfilePage() {
     const { id } = useParams();
     const router = useRouter();
-
+    const { users, setUsers, currentPage, setCurrentPage } = useUserStore();
+    const [isLoading, setIsLoading] = useState(users.length === 0);
+    const [fetchError, setFetchError] = useState(null);
+    const [rowsPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totaltrips, setTotaltips] = useState();
+    const [isSearching, setIsSearching] = useState(false);
+    const [inputValue, setInputValue] = useState(""); // Store raw input without +
+    const [selectedCountry, setSelectedCountry] = useState("us");
     const [user, setUser] = useState(null);
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,20 +60,12 @@ export default function UserProfilePage() {
 
                 if (resUser?.statusCode === 200 && resUser?.status) {
                     setUser(resUser.data);
+
+                    // Fetch trips immediately after user data is loaded
+                    await fetchUserTrips();
                 } else {
                     throw new Error(resUser?.message || 'Failed to fetch user data');
                 }
-
-                // fetch trips
-                const resTrips = await getAllUserTripById(id);
-                if (resTrips?.statusCode === 200 && resTrips?.status) {
-                    // Check if data is nested in a data property
-                    const tripsData = resTrips.data.data || resTrips.data;
-                    setTrips(tripsData);
-                } else {
-                    setTrips([]); // fallback
-                }
-
             } catch (err) {
                 console.error('Failed to fetch user:', err);
                 showSnackbar(err.message || 'Failed to load user data', 'error');
@@ -79,12 +82,42 @@ export default function UserProfilePage() {
         }
     }, [id]);
 
+    const fetchUserTrips = async (page = 1) => {
+        try {
+            setIsLoading(true);
+            const response = await getAllUserTripById(id, page, rowsPerPage);
+
+            if (response?.statusCode === 200 && response?.status) {
+                console.log("totaltrips" ,response?.data?.totalDocuments )
+                setTotaltips(response?.data?.totalDocuments)
+                setTrips(response?.data?.data || []);
+                setTotalPages(response?.data?.totalPages || 1);
+            } else {
+                throw new Error(response?.message || 'Failed to fetch user trips');
+            }
+        } catch (err) {
+            console.error("Failed to fetch user trips:", err);
+            setFetchError("Failed to load user trip data");
+            showSnackbar(err.message || 'Failed to load trip data', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const showSnackbar = (message, type = 'success') => {
         setSnackbar({ visible: true, message, type });
     };
 
     const hideSnackbar = () => {
         setSnackbar({ ...snackbar, visible: false });
+    };
+
+    // Handle refresh for clearing search
+    const handleRefresh = () => {
+        setInputValue("");
+        setSelectedCountry("us");
+        setIsSearching(false);
+        fetchUserTrips(1);
     };
 
     // Format date for better readability
@@ -186,7 +219,7 @@ export default function UserProfilePage() {
         const totalSpent = trips
             .filter(trip => trip.status === 'Completed' && trip.fareDetails?.totalFare)
             .reduce((sum, trip) => sum + trip.fareDetails.totalFare, 0);
-        
+
         return {
             total: trips.length,
             completed: completedTrips,
@@ -251,7 +284,7 @@ export default function UserProfilePage() {
                                 onClick={() => setActiveTab('trips')}
                                 className={`py-4 px-6 text-center font-medium text-sm border-b-2 transition-colors ${activeTab === 'trips' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                             >
-                                Trip History ({trips.length})
+                                Trip History ({totaltrips})
                             </button>
                         </nav>
                     </div>
@@ -526,83 +559,79 @@ export default function UserProfilePage() {
                             </>
                         ) : (
                             /* Trip History Content */
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-800 mb-6">Trip History</h2>
-
-                                {trips.length === 0 ? (
-                                    <div className="text-center py-10">
-                                        <FiAlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-                                        <h3 className="mt-2 text-sm font-medium text-gray-900">No trips found</h3>
-                                        <p className="mt-1 text-sm text-gray-500">This user hasn't taken any trips yet.</p>
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fare</th>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {trips.map((trip) => (
-                                                    <tr key={trip._id} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="text-sm text-gray-900">{formatDate(trip.travelDate)}</div>
-                                                            <div className="text-sm text-gray-500 flex items-center">
-                                                                <FiClock className="mr-1" /> {formatTime(trip.travelTime)}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {trip.pickupLocation?.address || 'N/A'}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500">
-                                                                to {trip.dropLocation?.address || 'N/A'}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="flex items-center">
-                                                                {getVehicleIcon(trip.vehicleType)}
-                                                                <span className="ml-2 text-sm text-gray-900">{trip.vehicleType}</span>
-                                                            </div>
-                                                            {trip.bookingType === 'PoolRide' && (
-                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
-                                                                    Shared Ride
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            ₹{trip.fareDetails?.totalFare || 0}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="flex items-center">
-                                                                {getPaymentMethodIcon(trip.payment?.method)}
-                                                                <span className="ml-2 text-sm text-gray-900">{trip.payment?.method}</span>
-                                                            </div>
-                                                            <div className="text-sm text-gray-500">
-                                                                {trip.payment?.isPaid ? 'Paid' : 'Not Paid'}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
+                            <>
+                                {/* Table */}
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 text-sm text-center">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Trip ID</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Pickup</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Destination</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Date</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Time</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Driver Name</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Driver Phone</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Fare</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Status</th>
+                                                <th className="px-4 py-3 text-gray-600 font-medium">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 text-gray-700">
+                                            {trips.length > 0 ? (
+                                                trips.map((trip, index) => (
+                                                    <tr key={trip._id}>
+                                                        <td className="px-4 py-3 text-xs font-mono">{trip._id?.substring(0, 8)}...</td>
+                                                        <td className="px-4 py-3">{trip.pickupLocation?.address || 'N/A'}</td>
+                                                        <td className="px-4 py-3">{trip.destinationLocation?.address || 'N/A'}</td>
+                                                        <td className="px-4 py-3">{formatDate(trip.createdAt)}</td>
+                                                        <td className="px-4 py-3">₹{trip.fareDetails?.totalFare || '0'}</td>
+                                                        <td className="px-4 py-3">₹{trip.fareDetails?.totalFare || '0'}</td>
+                                                        <td className="px-4 py-3">
                                                             {getStatusBadge(trip.status)}
-                                                            {trip.status === 'Cancelled' && trip.cancelreason && (
-                                                                <div className="text-xs text-gray-500 mt-1">
-                                                                    Reason: {trip.cancelreason}
-                                                                </div>
-                                                            )}
                                                         </td>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                                        No trips found for this user
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination - Only show if multiple pages exist */}
+                                {totalPages > 1 && (
+                                    <div className="flex justify-center items-center mt-6 gap-2">
+                                        <button
+                                            disabled={currentPage === 1}
+                                            onClick={() => {
+                                                setCurrentPage(currentPage - 1);
+                                                fetchUserTrips(currentPage - 1);
+                                            }}
+                                            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-100"
+                                        >
+                                            Prev
+                                        </button>
+                                        <span className="text-sm text-gray-600">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <button
+                                            disabled={currentPage === totalPages}
+                                            onClick={() => {
+                                                setCurrentPage(currentPage + 1);
+                                                fetchUserTrips(currentPage + 1);
+                                            }}
+                                            className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-100"
+                                        >
+                                            Next
+                                        </button>
                                     </div>
                                 )}
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>

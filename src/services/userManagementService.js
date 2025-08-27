@@ -27,8 +27,22 @@ export async function getAllUserById(id) {
   });
 }
 
-export async function getAllUserTripById(id) {
-  return authorizedFetch(`/admin/get-user-trips?userId=${id}`, {
-    method: 'GET',
+
+
+
+export async function getAllUserTripById(userId, page = null, limit = null, filter = {}) {
+  const query = new URLSearchParams();
+
+  query.append("userId", userId);
+
+  if (page) query.append("page", page);
+  if (limit) query.append("limit", limit);
+
+  if (Object.keys(filter).length > 0) {
+    query.append("filter", JSON.stringify(filter));
+  }
+
+  return authorizedFetch(`/admin/get-user-trips?${query.toString()}`, {
+    method: "GET",
   });
 }

@@ -1,7 +1,7 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getdriverById, getAllUserTripById } from '@/services/driverManagement';
+import { getdriverById, getAllUserTripById ,changeStatus} from '@/services/driverManagement';
 import {
     FiArrowLeft,
     FiMapPin,
@@ -24,6 +24,9 @@ import {
     FiMap,
     FiTrendingUp,
     FiLock,
+    FiMoreVertical,
+    FiUserX,
+    FiTrash2
 } from 'react-icons/fi';
 import Snackbar from '@/components/layout/Snackbar';
 
@@ -34,12 +37,16 @@ export default function UserProfilePage() {
     const [user, setUser] = useState(null);
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('profile'); // 'profile' or 'trips'
+    const [activeTab, setActiveTab] = useState('profile');
     const [snackbar, setSnackbar] = useState({
         visible: false,
         message: '',
         type: 'success'
     });
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const [actionType, setActionType] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -56,11 +63,10 @@ export default function UserProfilePage() {
                 // fetch trips
                 const resTrips = await getAllUserTripById(id);
                 if (resTrips?.statusCode === 200 && resTrips?.status) {
-                    // Check if data is nested in a data property
                     const tripsData = resTrips.data.data || resTrips.data;
                     setTrips(tripsData);
                 } else {
-                    setTrips([]); // fallback
+                    setTrips([]);
                 }
 
             } catch (err) {
@@ -79,6 +85,20 @@ export default function UserProfilePage() {
         }
     }, [id]);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isDropdownOpen && !event.target.closest('.relative')) {
+                setIsDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isDropdownOpen]);
+
     const showSnackbar = (message, type = 'success') => {
         setSnackbar({ visible: true, message, type });
     };
@@ -87,7 +107,48 @@ export default function UserProfilePage() {
         setSnackbar({ ...snackbar, visible: false });
     };
 
-    // Format date for better readability
+    const handleActionClick = (action) => {
+        setActionType(action);
+        setShowConfirmation(true);
+        setIsDropdownOpen(false);
+    };
+
+    const handleConfirmAction = async () => {
+        try {
+            console.log("function hit ")
+            setIsUpdating(true);
+            
+            if (actionType === 'block') {
+                setUser(prev => ({ ...prev, isBlocked: true }));
+            } else if (actionType === 'unblock') {
+                setUser(prev => ({ ...prev, isBlocked: false }));
+            } else if (actionType === 'delete') {
+                setUser(prev => ({ ...prev, isDeleted: true }));
+            }
+            const Status = await changeStatus(id ,block)
+            console.log("status" , Status)
+            showSnackbar(`User ${actionType === 'block' ? 'blocked' : actionType === 'unblock' ? 'unblocked' : 'deleted'} successfully`, 'success');
+        } catch (error) {
+            console.error('Failed to update user status:', error);
+            showSnackbar('Failed to update user status', 'error');
+        } finally {
+            setIsUpdating(false);
+            setShowConfirmation(false);
+        }
+    };
+
+    const getStatusColor = () => {
+        if (user.isDeleted) return 'text-red-600 bg-red-100';
+        if (user.isBlocked) return 'text-yellow-600 bg-yellow-100';
+        return 'text-green-600 bg-green-100';
+    };
+
+    const getStatusText = () => {
+        if (user.isDeleted) return 'Deleted';
+        if (user.isBlocked) return 'Inactive';
+        return 'Active';
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return 'Not available';
 
@@ -103,24 +164,21 @@ export default function UserProfilePage() {
         }
     };
 
-    // Format time for better readability
     const formatTime = (timeString) => {
         if (!timeString) return '';
 
         try {
-            // Handle both "06:45 PM" format and ISO time format
             if (timeString.includes('PM') || timeString.includes('AM')) {
                 return timeString;
             }
 
-            // If it's in ISO format, extract the time part
             const timeParts = timeString.split('T')[1]?.split(':');
             if (timeParts) {
                 let hours = parseInt(timeParts[0]);
                 const minutes = timeParts[1];
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12;
-                hours = hours ? hours : 12; // the hour '0' should be '12'
+                hours = hours ? hours : 12;
                 return `${hours}:${minutes} ${ampm}`;
             }
 
@@ -130,7 +188,6 @@ export default function UserProfilePage() {
         }
     };
 
-    // Get status badge with appropriate colors
     const getStatusBadge = (status) => {
         switch (status) {
             case 'Completed':
@@ -146,7 +203,6 @@ export default function UserProfilePage() {
         }
     };
 
-    // Get payment method icon
     const getPaymentMethodIcon = (method) => {
         switch (method) {
             case 'CASH':
@@ -160,7 +216,6 @@ export default function UserProfilePage() {
         }
     };
 
-    // Get vehicle type icon
     const getVehicleIcon = (type) => {
         switch (type) {
             case 'Bike':
@@ -174,12 +229,10 @@ export default function UserProfilePage() {
         }
     };
 
-    // Safely get nested properties
     const getSafeValue = (value, fallback = 'Not provided') => {
         return value !== null && value !== undefined ? value : fallback;
     };
 
-    // Calculate trip statistics
     const calculateTripStats = () => {
         const completedTrips = trips.filter(trip => trip.status === 'Completed').length;
         const cancelledTrips = trips.filter(trip => trip.status === 'Cancelled').length;
@@ -315,6 +368,50 @@ export default function UserProfilePage() {
                                             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                                                 <FiUser className="mr-2 text-indigo-600" /> Personal Information
                                             </h3>
+                                            
+                                            {/* Status Dropdown */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                    className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}
+                                                >
+                                                    {getStatusText()}
+                                                    <FiMoreVertical className="ml-1" />
+                                                </button>
+                                                
+                                                {isDropdownOpen && (
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                                                        <div className="py-1">
+                                                            {!user.isBlocked && !user.isDeleted && (
+                                                                <button
+                                                                    onClick={() => handleActionClick('block')}
+                                                                    className="flex items-center px-4 py-2 text-sm text-yellow-600 hover:bg-yellow-50 w-full text-left"
+                                                                >
+                                                                    <FiUserX className="mr-2" /> Mark Inactive
+                                                                </button>
+                                                            )}
+                                                            
+                                                            {user.isBlocked && !user.isDeleted && (
+                                                                <button
+                                                                    onClick={() => handleActionClick('unblock')}
+                                                                    className="flex items-center px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left"
+                                                                >
+                                                                    <FiCheckCircle className="mr-2" /> Mark Active
+                                                                </button>
+                                                            )}
+                                                            
+                                                            {!user.isDeleted && (
+                                                                <button
+                                                                    onClick={() => handleActionClick('delete')}
+                                                                    className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                                                >
+                                                                    <FiTrash2 className="mr-2" /> Delete User
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 gap-4">
@@ -503,12 +600,12 @@ export default function UserProfilePage() {
                                                         <FiCheckCircle className="mr-1" /> Verified
                                                     </span>
                                                 ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
+                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex itemsCenter">
                                                         <FiXCircle className="mr-1" /> Pending
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
+                                            <div className="flex flexCol p-3 bg-white rounded-lg border border-gray-200">
                                                 <span className="text-sm text-gray-500 mb-1">Phone Verification</span>
                                                 {user.isPhoneVerified ? (
                                                     <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
@@ -607,6 +704,44 @@ export default function UserProfilePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Popup */}
+            {showConfirmation && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                            Confirm Action
+                        </h3>
+                        
+                        <p className="text-gray-600 mb-6">
+                            {actionType === 'block' && 'Are you sure you want to mark this user as inactive?'}
+                            {actionType === 'unblock' && 'Are you sure you want to mark this user as active?'}
+                            {actionType === 'delete' && 'Are you sure you want to delete this user? This action cannot be undone.'}
+                        </p>
+                        
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => setShowConfirmation(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                disabled={isUpdating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmAction}
+                                className={`px-4 py-2 rounded-md text-white ${
+                                    actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' :
+                                    actionType === 'block' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                                    'bg-green-600 hover:bg-green-700'
+                                }`}
+                                disabled={isUpdating}
+                            >
+                                {isUpdating ? 'Processing...' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Snackbar for notifications */}
             <Snackbar
