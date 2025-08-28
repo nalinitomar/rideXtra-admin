@@ -110,7 +110,7 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
+    <div className="flex-1 overflow-y-auto p-4">
       {/* Add the style tag here */}
       <style jsx>{`
       .react-tel-input input::placeholder {
@@ -118,10 +118,10 @@ export default function UserManagementPage() {
         opacity: 1 !important;
       }
     `}</style>
-      <div className="bg-white shadow-sm border border-gray-100 rounded-xl p-6">
+      <div className="bg-white shadow-sm border border-gray-100 rounded-xl">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex flex-col p-4 sm:flex-row justify-between items-start sm:items-center  gap-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -260,7 +260,7 @@ export default function UserManagementPage() {
 
             {/* Pagination - Only show if not searching and multiple pages exist */}
             {!isSearching && totalPages > 1 && (
-              <div className="flex justify-center items-center mt-6 gap-2">
+              <div className="flex justify-center items-center p-2 gap-2">
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(currentPage - 1)}

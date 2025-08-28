@@ -88,7 +88,7 @@ export default function UserProfilePage() {
             const response = await getAllUserTripById(id, page, rowsPerPage);
 
             if (response?.statusCode === 200 && response?.status) {
-                console.log("totaltrips" ,response?.data?.totalDocuments )
+                console.log("totaltrips", response?.data?.totalDocuments)
                 setTotaltips(response?.data?.totalDocuments)
                 setTrips(response?.data?.data || []);
                 setTotalPages(response?.data?.totalPages || 1);
@@ -259,19 +259,22 @@ export default function UserProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-            <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-gray-50 p-4">
+            <div className="mx-auto">
+                {/* Header with Back Button */}
+                <div className="flex items-center mb-2">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors mr-4"
+                    >
+                        <FiArrowLeft className="" />
+                    </button>
+                    <h1 className="text-xl font-bold text-gray-800">User Profile</h1>
+                </div>
+
                 {/* Tabs for Profile and Trip History */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
                     <div className="border-b border-gray-200 flex items-center">
-                        {/* Back button */}
-                        <button
-                            onClick={() => router.back()}
-                            className="flex items-center text-gray-500 hover:text-gray-700 font-medium py-4 px-6 transition-colors border-b-2 border-transparent"
-                        >
-                            <FiArrowLeft className="mr-1" /> Back
-                        </button>
-
                         {/* Tabs */}
                         <nav className="flex -mb-px">
                             <button
@@ -289,9 +292,9 @@ export default function UserProfilePage() {
                         </nav>
                     </div>
 
-                    <div className="p-6">
+                    <>
                         {activeTab === 'profile' ? (
-                            <>
+                            <div className='p-4'>
                                 {/* User Stats Overview */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                                     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
@@ -556,10 +559,10 @@ export default function UserProfilePage() {
                                         </div>
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         ) : (
                             /* Trip History Content */
-                            <>
+                            <div className='mt-4'>
                                 {/* Table */}
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200 text-sm text-center">
@@ -594,7 +597,7 @@ export default function UserProfilePage() {
                                                 ))
                                             ) : (
                                                 <tr>
-                                                    <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                                    <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
                                                         No trips found for this user
                                                     </td>
                                                 </tr>
@@ -631,9 +634,9 @@ export default function UserProfilePage() {
                                         </button>
                                     </div>
                                 )}
-                            </>
+                            </div>
                         )}
-                    </div>
+                    </>
                 </div>
             </div>
 

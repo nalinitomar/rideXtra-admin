@@ -3,18 +3,16 @@ import { FiBarChart2, FiUsers  , FiClock  ,FiMessageSquare   ,FiLogOut, FiX, } f
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
+import { FaCar } from "react-icons/fa";
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
- 
-
-
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: FiBarChart2 },
     { href: "/user-management", label: "User Management", icon: FiUsers  },
-    { href: "/driver-management", label: "Driver Management", icon: FiUsers },
+    { href: "/driver-management", label: "Driver Management", icon: FaCar },
     { href: "/ride-management", label: "Ride History Management", icon: FiClock  },
     { href: "/help-support", label: "Help Support", icon: FiMessageSquare   },
   ];
@@ -28,7 +26,7 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   const renderNav = () => (
-    <div className="flex flex-col w-68 bg-gradient-to-b from-indigo-900 to-indigo-800 text-white h-full">
+    <div className="flex flex-col w-68 bg-gradient-to-b from-gray-900 to-gray-800 text-white h-full">
       <div className="flex items-center h-20 px-6 border-b border-indigo-700 justify-between">
         <div className="flex items-center">
           <div className="w-9 h-9 flex items-center justify-center  text-white font-bold rounded-lg backdrop-blur-sm">

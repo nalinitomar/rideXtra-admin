@@ -36,17 +36,51 @@ export async function getAllUserTripById(id) {
   });
 }
 
-export async function changeStatus(id , block , accountDelete) {
-  let body ={} //block,
-  if(accountDelete){
-    body.id = id  
-    body.deleted = accountDelete
-  }else{
-    body.id = id  
-    body.block = block
+export async function changeStatus(id, action, reason) {
+  console.log("api call ->", id, action , reason);
+
+  let body = { id };
+
+  // Handle delete
+  if (action === "delete") {
+    body.deleted = true;
+    return authorizedFetch(`/admin/change-driver-status`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
-  return authorizedFetch(`/admin/change-user-status`, {
-    method: 'POST',
-     body: JSON.stringify(body),
-  });
+
+  // Handle block / unblock
+  if (action === "block" || action === "unblock") {
+    body.block = action === "block"; // true for block, false for unblock
+    return authorizedFetch(`/admin/change-driver-status`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  // Handle verify / unverify
+  if (action === "verify") {
+    return authorizedFetch(`/admin/verify-by-admin`, {
+      method: "POST",
+      body: JSON.stringify({
+        driverId: id,
+        status: true,
+      }),
+    });
+  }
+
+  if (action === "unverify") {
+    if (!Array.isArray(reason) || reason.length === 0) {
+      throw new Error("Reason array required when unverifying documents");
+    }
+    return authorizedFetch(`/admin/verify-by-admin`, {
+      method: "POST",
+      body: JSON.stringify({
+        driverId: id,
+        status: false,
+        reason, // e.g. ["license", "bank"]
+      }),
+    });
+  }
 }

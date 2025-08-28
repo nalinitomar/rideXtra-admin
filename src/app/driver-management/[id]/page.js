@@ -1,40 +1,42 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getdriverById, getAllUserTripById ,changeStatus} from '@/services/driverManagement';
+import { FiMaximize } from "react-icons/fi";
+import { getdriverById, getAllUserTripById, changeStatus } from '@/services/driverManagement';
+import { IMAGE_URL } from '@/lib/apiConfig'
 import {
     FiArrowLeft,
-    FiMapPin,
     FiPhone,
     FiMail,
     FiDollarSign,
-    FiCreditCard,
-    FiShield,
     FiUser,
     FiCalendar,
     FiGlobe,
     FiCheckCircle,
     FiXCircle,
-    FiClock,
-    FiNavigation,
     FiTruck,
     FiCreditCard as FiCard,
     FiDollarSign as FiCash,
     FiAlertCircle,
-    FiMap,
     FiTrendingUp,
-    FiLock,
-    FiMoreVertical,
     FiUserX,
-    FiTrash2
+    FiTrash2,
+    FiAward,
+    FiFileText,
+    FiEdit,
+    FiStar
 } from 'react-icons/fi';
 import Snackbar from '@/components/layout/Snackbar';
+import Image from 'next/image';
+import { FaBuilding, FaCar, FaRegFileAlt } from "react-icons/fa";
 
-export default function UserProfilePage() {
+
+export default function DriverProfilePage() {
     const { id } = useParams();
     const router = useRouter();
+    const [isOpen, setIsOpen] = useState(false);
 
-    const [user, setUser] = useState(null);
+    const [driver, setDriver] = useState(null);
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('profile');
@@ -47,43 +49,47 @@ export default function UserProfilePage() {
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [actionType, setActionType] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [showUnverifyForm, setShowUnverifyForm] = useState(false);
+    const [unverifyReason, setUnverifyReason] = useState('');
+    const [selectedReasons, setSelectedReasons] = useState([]);
 
     useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                setLoading(true);
-                const resUser = await getdriverById(id);
-
-                if (resUser?.statusCode === 200 && resUser?.status) {
-                    setUser(resUser.data);
-                } else {
-                    throw new Error(resUser?.message || 'Failed to fetch user data');
-                }
-
-                // fetch trips
-                const resTrips = await getAllUserTripById(id);
-                if (resTrips?.statusCode === 200 && resTrips?.status) {
-                    const tripsData = resTrips.data.data || resTrips.data;
-                    setTrips(tripsData);
-                } else {
-                    setTrips([]);
-                }
-
-            } catch (err) {
-                console.error('Failed to fetch user:', err);
-                showSnackbar(err.message || 'Failed to load user data', 'error');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (id) {
-            fetchUser();
+            fetchDriver();
         } else {
-            showSnackbar('User ID is required', 'error');
+            showSnackbar('Driver ID is required', 'error');
             setLoading(false);
         }
     }, [id]);
+
+    // 👇 Move fetchDriver here (outside useEffect but inside component)
+    const fetchDriver = async () => {
+        try {
+            setLoading(true);
+            const resDriver = await getdriverById(id);
+
+            if (resDriver?.statusCode === 200 && resDriver?.status) {
+                setDriver(resDriver.data);
+                console.log("Image", `${IMAGE_URL}${resDriver.data.drivinglicense}`);
+            } else {
+                throw new Error(resDriver?.message || 'Failed to fetch driver data');
+            }
+
+            // fetch trips
+            const resTrips = await getAllUserTripById(id);
+            if (resTrips?.statusCode === 200 && resTrips?.status) {
+                const tripsData = resTrips.data.data || resTrips.data;
+                setTrips(tripsData);
+            } else {
+                setTrips([]);
+            }
+        } catch (err) {
+            console.error('Failed to fetch driver:', err);
+            showSnackbar(err.message || 'Failed to load driver data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -109,43 +115,67 @@ export default function UserProfilePage() {
 
     const handleActionClick = (action) => {
         setActionType(action);
-        setShowConfirmation(true);
+        console.log("Verified", action)
+        if (action === 'unverify') {
+            setUnverifyReason('');
+            setShowUnverifyForm(true);
+        } else {
+            setShowConfirmation(true);
+        }
+
         setIsDropdownOpen(false);
     };
 
     const handleConfirmAction = async () => {
         try {
-            console.log("function hit ")
             setIsUpdating(true);
-            
+
             if (actionType === 'block') {
-                setUser(prev => ({ ...prev, isBlocked: true }));
+                setDriver(prev => ({ ...prev, isBlocked: true }));
             } else if (actionType === 'unblock') {
-                setUser(prev => ({ ...prev, isBlocked: false }));
+                setDriver(prev => ({ ...prev, isBlocked: false }));
             } else if (actionType === 'delete') {
-                setUser(prev => ({ ...prev, isDeleted: true }));
+                setDriver(prev => ({ ...prev, isDeleted: true }));
             }
-            const Status = await changeStatus(id ,block)
-            console.log("status" , Status)
-            showSnackbar(`User ${actionType === 'block' ? 'blocked' : actionType === 'unblock' ? 'unblocked' : 'deleted'} successfully`, 'success');
+
+            // 👇 pass array instead of string
+            const Status = await changeStatus(id, actionType, selectedReasons);
+            console.log("status", Status)
+            console.log("status", selectedReasons);
+            if (Status.statusCode === 200 && Status.status === true) {
+                fetchDriver()
+                showSnackbar(
+                    actionType === 'unverify'
+                        ? 'Documents unverified successfully'
+                        : `Driver ${actionType === 'block'
+                            ? 'blocked'
+                            : actionType === 'unblock'
+                                ? 'unblocked'
+                                : 'deleted'
+                        } successfully`,
+                    'success'
+                );
+            }
+
         } catch (error) {
-            console.error('Failed to update user status:', error);
-            showSnackbar('Failed to update user status', 'error');
+            console.error('Failed to update driver status:', error);
+            showSnackbar('Failed to update driver status', 'error');
         } finally {
             setIsUpdating(false);
             setShowConfirmation(false);
+            setShowUnverifyForm(false);
         }
     };
 
     const getStatusColor = () => {
-        if (user.isDeleted) return 'text-red-600 bg-red-100';
-        if (user.isBlocked) return 'text-yellow-600 bg-yellow-100';
+        if (driver.isDeleted) return 'text-red-600 bg-red-100';
+        if (driver.isBlocked) return 'text-yellow-600 bg-yellow-100';
         return 'text-green-600 bg-green-100';
     };
 
     const getStatusText = () => {
-        if (user.isDeleted) return 'Deleted';
-        if (user.isBlocked) return 'Inactive';
+        if (driver.isDeleted) return 'Deleted';
+        if (driver.isBlocked) return 'Inactive';
         return 'Active';
     };
 
@@ -164,30 +194,6 @@ export default function UserProfilePage() {
         }
     };
 
-    const formatTime = (timeString) => {
-        if (!timeString) return '';
-
-        try {
-            if (timeString.includes('PM') || timeString.includes('AM')) {
-                return timeString;
-            }
-
-            const timeParts = timeString.split('T')[1]?.split(':');
-            if (timeParts) {
-                let hours = parseInt(timeParts[0]);
-                const minutes = timeParts[1];
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                return `${hours}:${minutes} ${ampm}`;
-            }
-
-            return timeString;
-        } catch (error) {
-            return timeString;
-        }
-    };
-
     const getStatusBadge = (status) => {
         switch (status) {
             case 'Completed':
@@ -203,30 +209,16 @@ export default function UserProfilePage() {
         }
     };
 
-    const getPaymentMethodIcon = (method) => {
-        switch (method) {
-            case 'CASH':
-                return <FiCash className="text-green-500" />;
-            case 'CARD':
-                return <FiCard className="text-blue-500" />;
-            case 'PAYPAL':
-                return <FiDollarSign className="text-blue-400" />;
-            default:
-                return <FiCreditCard className="text-gray-500" />;
-        }
-    };
-
-    const getVehicleIcon = (type) => {
-        switch (type) {
-            case 'Bike':
-                return <FiNavigation className="text-indigo-500" />;
-            case 'Sedan':
-            case 'SUV':
-            case 'Hatchback':
-                return <FiTruck className="text-indigo-500" />;
-            default:
-                return <FiTruck className="text-gray-500" />;
-        }
+    const getVerificationStatus = (isVerified) => {
+        return isVerified ? (
+            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
+                <FiCheckCircle className="mr-1" /> Verified
+            </span>
+        ) : (
+            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center">
+                <FiXCircle className="mr-1" /> Pending
+            </span>
+        );
     };
 
     const getSafeValue = (value, fallback = 'Not provided') => {
@@ -236,19 +228,17 @@ export default function UserProfilePage() {
     const calculateTripStats = () => {
         const completedTrips = trips.filter(trip => trip.status === 'Completed').length;
         const cancelledTrips = trips.filter(trip => trip.status === 'Cancelled').length;
-        const totalSpent = trips
+        const totalEarnings = trips
             .filter(trip => trip.status === 'Completed' && trip.fareDetails?.totalFare)
             .reduce((sum, trip) => sum + trip.fareDetails.totalFare, 0);
-        
+
         return {
             total: trips.length,
             completed: completedTrips,
             cancelled: cancelledTrips,
-            totalSpent: totalSpent
+            totalEarnings: totalEarnings
         };
     };
-
-    const tripStats = calculateTripStats();
 
     if (loading) {
         return (
@@ -258,15 +248,15 @@ export default function UserProfilePage() {
         );
     }
 
-    if (!user) {
+    if (!driver) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="text-center max-w-md">
                     <div className="mx-auto h-16 w-16 text-red-400 mb-4">
                         <FiXCircle className="w-full h-full" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">User Not Found</h2>
-                    <p className="text-gray-600 mb-6">The user you're looking for doesn't exist or couldn't be loaded.</p>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Driver Not Found</h2>
+                    <p className="text-gray-600 mb-6">The driver you're looking for doesn't exist or couldn't be loaded.</p>
                     <button
                         onClick={() => router.back()}
                         className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
@@ -278,27 +268,38 @@ export default function UserProfilePage() {
         );
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-            <div className="max-w-6xl mx-auto">
-                {/* Tabs for Profile and Trip History */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                    <div className="border-b border-gray-200 flex items-center">
-                        {/* Back button */}
-                        <button
-                            onClick={() => router.back()}
-                            className="flex items-center text-gray-500 hover:text-gray-700 font-medium py-4 px-6 transition-colors border-b-2 border-transparent"
-                        >
-                            <FiArrowLeft className="mr-1" /> Back
-                        </button>
+    const tripStats = calculateTripStats();
 
-                        {/* Tabs */}
+    return (
+        <div className="min-h-screen bg-gray-50 p-3">
+            <div className="mx-auto">
+                {/* Header with Back Button */}
+                <div className="flex items-center mb-2">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center text-gray-600 hover:text-gray-800 font-medium transition-colors mr-4"
+                    >
+                        <FiArrowLeft className="" />
+                    </button>
+                    <h1 className="text-xl font-bold text-gray-800">Driver Profile</h1>
+                </div>
+
+                {/* Main Content */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    {/* Tabs */}
+                    <div className="border-b border-gray-200">
                         <nav className="flex -mb-px">
                             <button
                                 onClick={() => setActiveTab('profile')}
                                 className={`py-4 px-6 text-center font-medium text-sm border-b-2 transition-colors ${activeTab === 'profile' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                             >
                                 Profile Details
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('documents')}
+                                className={`py-4 px-6 text-center font-medium text-sm border-b-2 transition-colors ${activeTab === 'documents' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Documents
                             </button>
                             <button
                                 onClick={() => setActiveTab('trips')}
@@ -312,219 +313,494 @@ export default function UserProfilePage() {
                     <div className="p-6">
                         {activeTab === 'profile' ? (
                             <>
-                                {/* User Stats Overview */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                        <div className="flex items-center">
-                                            <div className="p-2 bg-indigo-100 rounded-lg mr-3">
-                                                <FiTrendingUp className="text-indigo-600" />
-                                            </div>
+                                {/* Personal Information Card */}
+                                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+                                    {/* Driver Image - Rectangle */}
+                                    <div className="relative">
+                                        <div className="w-24 h-24 bg-indigo-200 rounded-lg flex items-center justify-center text-indigo-600 text-3xl font-bold border-2 border-white shadow-lg">
+                                            {driver.name ? driver.name.charAt(0).toUpperCase() : 'D'}
+                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-md border border-indigo-100">
+                                            <div className={`w-4 h-4 rounded-full ${driver.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Driver Basic Info */}
+                                    <div className="flex-1">
+                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                             <div>
-                                                <p className="text-sm text-indigo-700">Total Trips</p>
-                                                <p className="text-xl font-bold text-indigo-900">{tripStats.total}</p>
+                                                <h1 className="text-2xl font-bold text-gray-900 mb-1">{getSafeValue(driver.name)}</h1>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
+                                                        <FiUser className="mr-1 h-3 w-3" />
+                                                        ID: {driver._id?.substring(0, 8)}...
+                                                    </span>
+                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
+                                                        {getStatusText()}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Performance Stats */}
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-center">
+                                                    <div className="text-lg font-bold text-indigo-700">4.8</div>
+                                                    <div className="text-xs text-gray-600">Rating</div>
+                                                </div>
+                                                <div className="h-6 w-px bg-gray-300"></div>
+                                                <div className="text-center">
+                                                    <div className="text-lg font-bold text-indigo-700">127</div>
+                                                    <div className="text-xs text-gray-600">Trips</div>
+                                                </div>
+                                                <div className="h-6 w-px bg-gray-300"></div>
+                                                <div className="text-center">
+                                                    <div className="text-lg font-bold text-indigo-700">98%</div>
+                                                    <div className="text-xs text-gray-600">Completion</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Status Badges */}
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                <div className={`w-2 h-2 rounded-full mr-2 ${driver.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                                {driver.status || 'OFFLINE'}
+                                            </span>
+
+                                            {/* {driver.isEmailVerified && (
+                                                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                    <FiMail className="mr-1 h-3 w-3" />
+                                                    Email Verified
+                                                </span>
+                                            )}
+
+                                            {driver.isPhoneVerified && (
+                                                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                    <FiPhone className="mr-1 h-3 w-3" />
+                                                    Phone Verified
+                                                </span>
+                                            )} */}
+
+                                            {driver.isadminVerified && (
+                                                <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-medium rounded-full">
+                                                    <FaRegFileAlt className="mr-1 h-3 w-3" />
+                                                    Documents Verified
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Status Management Button */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                            className="flex items-center px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-md"
+                                        >
+                                            <FiEdit className="mr-2 h-4 w-4" />
+                                            Manage
+                                        </button>
+
+                                        {isDropdownOpen && (
+                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                                <div className="p-2">
+                                                    <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                                        Account Actions
+                                                    </div>
+
+                                                    {!driver.isBlocked && !driver.isDeleted && (
+                                                        <button
+                                                            onClick={() => handleActionClick('block')}
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-yellow-700 hover:bg-yellow-50 rounded-md transition-colors"
+                                                        >
+                                                            <FiUserX className="mr-2 h-4 w-4" />
+                                                            Mark Inactive
+                                                        </button>
+                                                    )}
+
+                                                    {driver.isBlocked && !driver.isDeleted && (
+                                                        <button
+                                                            onClick={() => handleActionClick('unblock')}
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-green-700 hover:bg-green-50 rounded-md transition-colors"
+                                                        >
+                                                            <FiCheckCircle className="mr-2 h-4 w-4" />
+                                                            Mark Active
+                                                        </button>
+                                                    )}
+
+                                                    {!driver.isDeleted && (
+                                                        <button
+                                                            onClick={() => handleActionClick('delete')}
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                                                        >
+                                                            <FiTrash2 className="mr-2 h-4 w-4" />
+                                                            Delete Driver
+                                                        </button>
+                                                    )}
+
+                                                    <div className="border-t border-gray-100 my-1"></div>
+
+                                                    <button
+                                                        onClick={() => handleActionClick('verify')}
+                                                        className="flex items-center w-full px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+                                                    >
+                                                        <FiCheckCircle className="mr-2 h-4 w-4" />
+                                                        Verify Account
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleActionClick('unverify')}
+                                                        className="flex items-center w-full px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-md transition-colors group"
+                                                    >
+                                                        <FiXCircle className="mr-2 h-4 w-4 text-amber-600 group-hover:text-amber-700" />
+                                                        Unverify Account
+                                                    </button>
+
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Detailed Information Grid */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 border-t border-gray-100 pt-6">
+                                    {/* Contact Information Card */}
+                                    <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="font-semibold text-gray-800 flex items-center">
+                                                <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                                                    <FiPhone className="text-indigo-600" />
+                                                </div>
+                                                Contact Information
+                                            </h4>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {/* Phone Number */}
+                                            <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</span>
+                                                    {getVerificationStatus(driver.isPhoneVerified)}
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <div className="p-2 bg-blue-100 rounded-full mr-3">
+                                                        <FiPhone className="text-blue-600 h-4 w-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900 text-lg">{getSafeValue(driver.phone)}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">Primary contact number</p>
+                                                    </div>
+                                                </div>
+                                                {/* <div className="flex space-x-2 mt-3 pt-3 border-t border-gray-100">
+                                                    <button className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-100 transition">
+                                                        Call
+                                                    </button>
+                                                    <button className="text-xs bg-green-50 text-green-600 px-3 py-1 rounded-full hover:bg-green-100 transition">
+                                                        WhatsApp
+                                                    </button>
+                                                    <button className="text-xs bg-gray-50 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-100 transition">
+                                                        SMS
+                                                    </button>
+                                                </div> */}
+                                            </div>
+
+                                            {/* Email Address */}
+                                            <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</span>
+                                                    {getVerificationStatus(driver.isEmailVerified)}
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <div className="p-2 bg-purple-100 rounded-full mr-3">
+                                                        <FiMail className="text-purple-600 h-4 w-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900 text-lg">{getSafeValue(driver.email)}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">Primary email address</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex space-x-2 mt-3 pt-3 border-t border-gray-100">
+                                                    <button className="text-xs bg-purple-50 text-purple-600 px-3 py-1 rounded-full hover:bg-purple-100 transition">
+                                                        Send Email
+                                                    </button>
+                                                    <button className="text-xs bg-gray-50 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-100 transition">
+                                                        Copy
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                                        <div className="flex items-center">
-                                            <div className="p-2 bg-green-100 rounded-lg mr-3">
-                                                <FiCheckCircle className="text-green-600" />
+
+                                    {/* Account Information Card */}
+                                    <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="font-semibold text-gray-800 flex items-center">
+                                                <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                                                    <FiCalendar className="text-indigo-600" />
+                                                </div>
+                                                Account Information
+                                            </h4>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {/* Account Dates */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Created Date */}
+                                                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="p-2 bg-green-100 rounded-full mr-3">
+                                                            <FiCalendar className="text-green-600 h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-500">Account Created</span>
+                                                    </div>
+                                                    <p className="font-semibold text-gray-900 text-lg">{formatDate(driver.createdAt)}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">Member for 2 years</p>
+                                                </div>
+
+                                                {/* Updated Date */}
+                                                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                    <div className="flex items-center mb-3">
+                                                        <div className="p-2 bg-blue-100 rounded-full mr-3">
+                                                            <FiCalendar className="text-blue-600 h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-500">Last Updated</span>
+                                                    </div>
+                                                    <p className="font-semibold text-gray-900 text-lg">{formatDate(driver.updatedAt)}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">Recently active</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-green-700">Completed</p>
-                                                <p className="text-xl font-bold text-green-900">{tripStats.completed}</p>
+
+                                            {/* Location Information */}
+                                            <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center">
+                                                        <div className="p-2 bg-orange-100 rounded-full mr-3">
+                                                            <FiGlobe className="text-orange-600 h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-500">Location & Region</span>
+                                                    </div>
+                                                    <button className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">
+                                                        View Map
+                                                    </button>
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <p className="font-semibold text-gray-900 text-lg">{getSafeValue(driver.country)}</p>
+                                                    <p className="text-xs text-gray-500">Registered country</p>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Currency</p>
+                                                        <p className="font-medium text-gray-900 text-sm">{getSafeValue(driver.currency)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Language</p>
+                                                        <p className="font-medium text-gray-900 text-sm">English</p>
+                                                    </div>
+                                                </div>
                                             </div>
+
+
                                         </div>
                                     </div>
-                                    <div className="bg-red-50 p-4 rounded-lg border border-red-100">
-                                        <div className="flex items-center">
-                                            <div className="p-2 bg-red-100 rounded-lg mr-3">
-                                                <FiXCircle className="text-red-600" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-red-700">Cancelled</p>
-                                                <p className="text-xl font-bold text-red-900">{tripStats.cancelled}</p>
+                                </div>
+
+                                {/* Driver Stats Overview */}
+                                <div className="border-t border-gray-100 pt-6 mt-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                        <FiTruck className="mr-2 text-indigo-600" /> Trip Details
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                            <div className="flex items-center">
+                                                <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                                                    <FiTrendingUp className="text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-indigo-700">Total Trips</p>
+                                                    <p className="text-xl font-bold text-indigo-900">{tripStats.total}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                        <div className="flex items-center">
-                                            <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                                                <FiDollarSign className="text-purple-600" />
+                                        <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                                            <div className="flex items-center">
+                                                <div className="p-2 bg-green-100 rounded-lg mr-3">
+                                                    <FiCheckCircle className="text-green-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-green-700">Completed</p>
+                                                    <p className="text-xl font-bold text-green-900">{tripStats.completed}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-purple-700">Total Spent</p>
-                                                <p className="text-xl font-bold text-purple-900">₹{tripStats.totalSpent}</p>
+                                        </div>
+                                        <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                                            <div className="flex items-center">
+                                                <div className="p-2 bg-red-100 rounded-lg mr-3">
+                                                    <FiXCircle className="text-red-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-red-700">Cancelled</p>
+                                                    <p className="text-xl font-bold text-red-900">{tripStats.cancelled}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                            <div className="flex items-center">
+                                                <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                                                    <FiDollarSign className="text-purple-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-purple-700">Total Earnings</p>
+                                                    <p className="text-xl font-bold text-purple-900">₹{tripStats.totalEarnings}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Profile details */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                    {/* Personal Information */}
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiUser className="mr-2 text-indigo-600" /> Personal Information
-                                            </h3>
-                                            
-                                            {/* Status Dropdown */}
-                                            <div className="relative">
-                                                <button
-                                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                    className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}
-                                                >
-                                                    {getStatusText()}
-                                                    <FiMoreVertical className="ml-1" />
-                                                </button>
-                                                
-                                                {isDropdownOpen && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                                                        <div className="py-1">
-                                                            {!user.isBlocked && !user.isDeleted && (
-                                                                <button
-                                                                    onClick={() => handleActionClick('block')}
-                                                                    className="flex items-center px-4 py-2 text-sm text-yellow-600 hover:bg-yellow-50 w-full text-left"
-                                                                >
-                                                                    <FiUserX className="mr-2" /> Mark Inactive
-                                                                </button>
-                                                            )}
-                                                            
-                                                            {user.isBlocked && !user.isDeleted && (
-                                                                <button
-                                                                    onClick={() => handleActionClick('unblock')}
-                                                                    className="flex items-center px-4 py-2 text-sm text-green-600 hover:bg-green-50 w-full text-left"
-                                                                >
-                                                                    <FiCheckCircle className="mr-2" /> Mark Active
-                                                                </button>
-                                                            )}
-                                                            
-                                                            {!user.isDeleted && (
-                                                                <button
-                                                                    onClick={() => handleActionClick('delete')}
-                                                                    className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                                                                >
-                                                                    <FiTrash2 className="mr-2" /> Delete User
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                {/* Driver Rating Overview */}
+                                <div className="mb-6 border-t border-gray-200">
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center mt-4 mb-4">
+                                        <FiStar className="mr-2 text-amber-500" /> Driver Rating & Performance
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Overall Rating */}
+                                        <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-sm text-amber-700">Overall Rating</p>
+                                                <div className="flex items-center">
+                                                    <FiStar className="text-amber-400 mr-1" />
+                                                    <span className="font-semibold text-amber-900">4.8</span>
+                                                    <span className="text-xs text-amber-600 ml-1">/5.0</span>
+                                                </div>
                                             </div>
+                                            <div className="w-full bg-amber-200 rounded-full h-2 mb-2">
+                                                <div
+                                                    className="bg-amber-500 h-2 rounded-full"
+                                                    style={{ width: '96%' }}
+                                                ></div>
+                                            </div>
+                                            <p className="text-xs text-amber-600">Based on 127 trips</p>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Full Name</p>
-                                                    <p className="font-medium text-gray-900">{getSafeValue(user.name)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">User ID</p>
-                                                    <p className="font-medium text-gray-900 text-sm">{getSafeValue(user._id, 'N/A')}</p>
-                                                </div>
-                                            </div>
-                                            <div className="border-t border-gray-100 pt-4">
-                                                <p className="text-sm text-gray-500 mb-1">Email Address</p>
+
+                                        {/* Rating Breakdown */}
+                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                            <p className="text-sm text-gray-700 mb-3">Rating Breakdown</p>
+
+                                            <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-600">5 Stars</span>
                                                     <div className="flex items-center">
-                                                        <FiMail className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.email)}</p>
+                                                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
+                                                            <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '85%' }}></div>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-800">85%</span>
                                                     </div>
-                                                    {user.isEmailVerified ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
-                                                            <FiCheckCircle className="mr-1" /> Verified
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
-                                                            <FiXCircle className="mr-1" /> Unverified
-                                                        </span>
-                                                    )}
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+
                                                 <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-600">4 Stars</span>
                                                     <div className="flex items-center">
-                                                        <FiPhone className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.phone)}</p>
-                                                    </div>
-                                                    {user.isPhoneVerified ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
-                                                            <FiCheckCircle className="mr-1" /> Verified
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
-                                                            <FiXCircle className="mr-1" /> Unverified
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Account Created</p>
-                                                    <div className="flex items-center">
-                                                        <FiCalendar className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">{formatDate(user.createdAt)}</p>
+                                                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
+                                                            <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '12%' }}></div>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-800">12%</span>
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Last Updated</p>
+
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-600">3 Stars</span>
                                                     <div className="flex items-center">
-                                                        <FiCalendar className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">{formatDate(user.updatedAt)}</p>
+                                                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
+                                                            <div className="bg-yellow-500 h-1.5 rounded-full" style={{ width: '2%' }}></div>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-800">2%</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-600">≤2 Stars</span>
+                                                    <div className="flex items-center">
+                                                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
+                                                            <div className="bg-red-500 h-1.5 rounded-full" style={{ width: '1%' }}></div>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-gray-800">1%</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Location & Preferences */}
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiMapPin className="mr-2 text-indigo-600" /> Location & Preferences
-                                            </h3>
+                                    {/* Performance Metrics */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-center">
+                                            <p className="text-sm text-blue-700 mb-1">Completion Rate</p>
+                                            <p className="text-xl font-bold text-blue-900">98.4%</p>
+                                            <p className="text-xs text-blue-600">124/127 trips</p>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Country</p>
-                                                    <div className="flex items-center">
-                                                        <FiGlobe className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.country)}</p>
-                                                    </div>
+
+                                        <div className="bg-green-50 p-3 rounded-lg border border-green-100 text-center">
+                                            <p className="text-sm text-green-700 mb-1">On-time Arrival</p>
+                                            <p className="text-xl font-bold text-green-900">94.2%</p>
+                                            <p className="text-xs text-green-600">119/127 trips</p>
+                                        </div>
+
+                                        <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 text-center">
+                                            <p className="text-sm text-purple-700 mb-1">Customer Satisfaction</p>
+                                            <p className="text-xl font-bold text-purple-900">96.8%</p>
+                                            <p className="text-xs text-purple-600">123/127 trips</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Reviews Preview */}
+                                    <div className="border-t border-gray-100 pt-4 mt-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-sm font-medium text-gray-700">Recent Reviews</p>
+                                            <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                                View All Reviews →
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-start">
+                                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                                    <span className="text-xs font-medium text-indigo-600">R</span>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Currency</p>
-                                                    <div className="flex items-center">
-                                                        <FiDollarSign className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.currency)}</p>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center mb-1">
+                                                        <div className="flex mr-2">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <FiStar
+                                                                    key={star}
+                                                                    className={`h-3 w-3 ${star <= 5 ? 'text-amber-400' : 'text-gray-300'}`}
+                                                                    fill={star <= 5 ? 'currentColor' : 'none'}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">2 days ago</span>
                                                     </div>
+                                                    <p className="text-sm text-gray-700">Excellent driver! Very professional and arrived early.</p>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Location Coordinates</p>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <FiMap className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">
-                                                            {user.location?.coordinates ?
-                                                                `${user.location.coordinates[0]}, ${user.location.coordinates[1]}` :
-                                                                'Not set'
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                    <button className="text-indigo-600 hover:text-indigo-800 text-xs font-medium">
-                                                        View Map
-                                                    </button>
+
+                                            <div className="flex items-start">
+                                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                                    <span className="text-xs font-medium text-indigo-600">S</span>
                                                 </div>
-                                            </div>
-                                            <div className="border-t border-gray-100 pt-4">
-                                                <p className="text-sm text-gray-500 mb-1">Preferred Payment Method</p>
-                                                <div className="flex items-center">
-                                                    <FiCreditCard className="mr-2 text-gray-400" />
-                                                    <p className="font-medium text-gray-900">{getSafeValue(user.paymentmode)}</p>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center mb-1">
+                                                        <div className="flex mr-2">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <FiStar
+                                                                    key={star}
+                                                                    className={`h-3 w-3 ${star <= 4 ? 'text-amber-400' : 'text-gray-300'}`}
+                                                                    fill={star <= 4 ? 'currentColor' : 'none'}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">5 days ago</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700">Good service, clean car and safe driving.</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -532,96 +808,27 @@ export default function UserProfilePage() {
                                 </div>
 
                                 {/* Financial Information */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                                <div className="mb-6 border-t border-gray-200">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                                        <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
                                                 <FiDollarSign className="mr-2 text-indigo-600" /> Financial Information
                                             </h3>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                                <p className="text-sm text-indigo-700 mb-1">Wallet Balance</p>
-                                                <p className="text-2xl font-bold text-indigo-900">₹{getSafeValue(user.WalletBalance, 0)}</p>
-                                            </div>
-                                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                                                <p className="text-sm text-amber-700 mb-1">Due Payments</p>
-                                                <p className="text-2xl font-bold text-amber-900">₹{getSafeValue(user.duePay, 0)}</p>
-                                            </div>
-                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                                <p className="text-sm text-purple-700 mb-1">Xtra Coins</p>
-                                                <p className="text-2xl font-bold text-purple-900">{getSafeValue(user.xtracoin, 0)}</p>
-                                            </div>
-                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                <p className="text-sm text-gray-700 mb-1">Avg. Trip Cost</p>
-                                                <p className="text-2xl font-bold text-gray-900">
-                                                    ₹{tripStats.completed > 0 ? Math.round(tripStats.totalSpent / tripStats.completed) : 0}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Account Status */}
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiShield className="mr-2 text-indigo-600" /> Account Status
-                                            </h3>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Account Status</span>
-                                                {user.isBlocked ? (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiLock className="mr-1" /> Blocked
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Active
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Deletion Status</span>
-                                                {user.isDeleted ? (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiXCircle className="mr-1" /> Deleted
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Active
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Email Verification</span>
-                                                {user.isEmailVerified ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Verified
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex itemsCenter">
-                                                        <FiXCircle className="mr-1" /> Pending
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex flexCol p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Phone Verification</span>
-                                                {user.isPhoneVerified ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Verified
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiXCircle className="mr-1" /> Pending
-                                                    </span>
-                                                )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                                    <p className="text-sm text-indigo-700 mb-1">Wallet Balance</p>
+                                                    <p className="text-2xl font-bold text-indigo-900">₹{getSafeValue(driver.Wallet, 0)}</p>
+                                                </div>
+                                                <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                                    <p className="text-sm text-amber-700 mb-1">Daily Wallet</p>
+                                                    <p className="text-2xl font-bold text-amber-900">₹{getSafeValue(driver.DailyWallet, 0)}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </>
-                        ) : (
+                        ) : activeTab === 'trips' ? (
                             /* Trip History Content */
                             <div>
                                 <h2 className="text-xl font-semibold text-gray-800 mb-6">Trip History</h2>
@@ -630,14 +837,14 @@ export default function UserProfilePage() {
                                     <div className="text-center py-10">
                                         <FiAlertCircle className="mx-auto h-12 w-12 text-gray-400" />
                                         <h3 className="mt-2 text-sm font-medium text-gray-900">No trips found</h3>
-                                        <p className="mt-1 text-sm text-gray-500">This user hasn't taken any trips yet.</p>
+                                        <p className="mt-1 text-sm text-gray-500">This driver hasn't completed any trips yet.</p>
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50">
                                                 <tr>
-                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
                                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
                                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fare</th>
@@ -650,9 +857,6 @@ export default function UserProfilePage() {
                                                     <tr key={trip._id} className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="text-sm text-gray-900">{formatDate(trip.travelDate)}</div>
-                                                            <div className="text-sm text-gray-500 flex items-center">
-                                                                <FiClock className="mr-1" /> {formatTime(trip.travelTime)}
-                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="text-sm font-medium text-gray-900">
@@ -663,35 +867,19 @@ export default function UserProfilePage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="flex items-center">
-                                                                {getVehicleIcon(trip.vehicleType)}
-                                                                <span className="ml-2 text-sm text-gray-900">{trip.vehicleType}</span>
-                                                            </div>
-                                                            {trip.bookingType === 'PoolRide' && (
-                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-1">
-                                                                    Shared Ride
-                                                                </span>
-                                                            )}
+                                                            <div className="text-sm text-gray-900">{trip.vehicleType}</div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                             ₹{trip.fareDetails?.totalFare || 0}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="flex items-center">
-                                                                {getPaymentMethodIcon(trip.payment?.method)}
-                                                                <span className="ml-2 text-sm text-gray-900">{trip.payment?.method}</span>
-                                                            </div>
+                                                            <div className="text-sm text-gray-900">{trip.payment?.method}</div>
                                                             <div className="text-sm text-gray-500">
                                                                 {trip.payment?.isPaid ? 'Paid' : 'Not Paid'}
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             {getStatusBadge(trip.status)}
-                                                            {trip.status === 'Cancelled' && trip.cancelreason && (
-                                                                <div className="text-xs text-gray-500 mt-1">
-                                                                    Reason: {trip.cancelreason}
-                                                                </div>
-                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -700,48 +888,561 @@ export default function UserProfilePage() {
                                     </div>
                                 )}
                             </div>
-                        )}
+                        ) : (
+                            /* Documents Content */
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-semibold text-gray-800">Driver Documents</h2>
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                            className="flex items-center px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-md"
+                                        >
+                                            <FiEdit className="mr-2 h-4 w-4" />
+                                            Manage
+                                        </button>
+
+                                        {isDropdownOpen && (
+                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                                <div className="p-2">
+                                                    <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                                        Account Actions
+                                                    </div>
+                                                    <div className="border-t border-gray-100 my-1"></div>
+
+                                                    <button
+                                                        onClick={() => handleActionClick("verify")}
+                                                        className="flex items-center w-full px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+                                                    >
+                                                        <FiCheckCircle className="mr-2 h-4 w-4" />
+                                                        Verify Account
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleActionClick("unverify")}
+                                                        className="flex items-center w-full px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-md transition-colors group"
+                                                    >
+                                                        <FiXCircle className="mr-2 h-4 w-4 text-amber-600 group-hover:text-amber-700" />
+                                                        Unverify Account
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Driving License */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                            <FiFileText className="mr-2 text-indigo-600" /> Driving License
+                                        </h3>
+
+                                        {driver.drivinglicense ? (
+                                            <div className="space-y-4">
+                                                {/* License Preview */}
+                                                <div className="border rounded-lg overflow-hidden">
+                                                    <div className="relative h-48 bg-gray-100">
+                                                        <Image
+                                                            src={`${IMAGE_URL}${driver.drivinglicense}`}
+                                                            alt="Driving License"
+                                                            fill
+                                                            className="object-width"
+                                                        />
+                                                    </div>
+                                                </div>
+
+
+                                                {/* Status & View Button */}
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 mb-1">License Upload</p>
+                                                        <span
+                                                            className={`px-3 py-1 rounded-full text-xs font-medium ${driver.isaddlicense
+                                                                ? "bg-green-100 text-green-700"
+                                                                : "bg-red-100 text-red-700"
+                                                                }`}
+                                                        >
+                                                            {driver.isaddlicense ? "Uploaded" : "Not Uploaded"}
+                                                        </span>
+                                                    </div>
+
+                                                    {driver.isaddlicense && (
+                                                        <button
+                                                            onClick={() => setIsOpen(true)}
+                                                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1"
+                                                        >
+                                                            <FiMaximize className="w-4 h-4" />
+                                                            View Full Size
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                                <FiAlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                                                <p className="text-gray-500">No driving license uploaded</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Modal for Full Image */}
+                                    {isOpen && (
+                                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                                            <div className="relative">
+                                                {/* Close button */}
+                                                <button
+                                                    onClick={() => setIsOpen(false)}
+                                                    className="absolute top-2 right-2 text-white text-2xl"
+                                                >
+                                                    ✕
+                                                </button>
+
+                                                {/* Only Image */}
+                                                <img
+                                                    src={`${IMAGE_URL}${driver.drivinglicense}`}
+                                                    alt="Driving License"
+                                                    className="max-h-[90vh] max-w-[90vw] object-contain"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Bank Account Information */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                            <FaBuilding className="mr-2 text-indigo-600" /> Bank Account Details
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Beneficiary Name</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.BeneficiaryName)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Account Number</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.bankAccount)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Bank Name</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.bankName)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Account Type</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.AccountType)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Branch</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.branch)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">IFSC Code</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.bankDetails?.Code)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Bank Account Added</p>
+                                                    <span
+                                                        className={`px-3 py-1 rounded-full text-xs font-medium ${driver.isaddlicense
+                                                            ? "bg-green-100 text-green-700"
+                                                            : "bg-red-100 text-red-700"
+                                                            }`}
+                                                    >
+                                                        {driver.isaddbank ? "Details Available" : "Not Provided"}
+                                                    </span>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Vehicle Information */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                            <FaCar className="mr-2 text-indigo-600" /> Vehicle Information
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Vehicle Type</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalType)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Electric Vehicle</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.electric)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Brand</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.brand)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Model</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.model)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Year</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.year)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Color</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.color)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Plate Number</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.plateNumber)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Seating Capacity</p>
+                                                    <p className="font-medium text-gray-900">
+                                                        {getSafeValue(driver.VehicalDetails?.seatingCapacity)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Vehicle Details Added</p>
+                                                    <span
+                                                        className={`px-3 py-1 rounded-full text-xs font-medium ${driver.isaddlicense
+                                                            ? "bg-green-100 text-green-700"
+                                                            : "bg-red-100 text-red-700"
+                                                            }`}
+                                                    >
+                                                        {driver.isaddlicense ? "Details Available" : "Not Provided"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Vehicle Documents */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                            <FaCar className="mr-2 text-indigo-600" /> Vehicle Documents
+                                        </h3>
+
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                                    <FiFileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                                                    <p className="text-sm text-gray-600">RC Document</p>
+                                                    <button className="mt-2 text-indigo-600 hover:text-indigo-800 text-xs font-medium">
+                                                        View Document
+                                                    </button>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                                    <FiFileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                                                    <p className="text-sm text-gray-600">Insurance</p>
+                                                    <button className="mt-2 text-indigo-600 hover:text-indigo-800 text-xs font-medium">
+                                                        View Document
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-4 border-t border-gray-100"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                        <FiAward className="mr-2 text-indigo-600" /> Verification Status
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-200">
+                                            <div className="mb-2 p-2 rounded-full bg-indigo-100 text-indigo-600">
+                                                <FiUser className="h-5 w-5" />
+                                            </div>
+                                            <span className="text-sm text-gray-500 mb-1">Profile</span>
+                                            {getVerificationStatus(driver.isEmailVerified && driver.isPhoneVerified)}
+                                        </div>
+
+                                        <div className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-200">
+                                            <div className="mb-2 p-2 rounded-full bg-indigo-100 text-indigo-600">
+                                                <FaCar className="h-5 w-5" />
+                                            </div>
+                                            <span className="text-sm text-gray-500 mb-1">Vehicle</span>
+                                            {getVerificationStatus(driver.isvehicleVerified)}
+                                        </div>
+
+                                        <div className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-200">
+                                            <div className="mb-2 p-2 rounded-full bg-indigo-100 text-indigo-600">
+                                                <FiFileText className="h-5 w-5" />
+                                            </div>
+                                            <span className="text-sm text-gray-500 mb-1">License</span>
+                                            {getVerificationStatus(driver.islicenseVerified)}
+                                        </div>
+
+                                        <div className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-200">
+                                            <div className="mb-2 p-2 rounded-full bg-indigo-100 text-indigo-600">
+                                                <FaBuilding className="h-5 w-5" />
+                                            </div>
+                                            <span className="text-sm text-gray-500 mb-1">Bank</span>
+                                            {getVerificationStatus(driver.isbankVerified)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                        }
                     </div>
                 </div>
             </div>
 
+            {/* Show UnVerifie Popup */}
+            {showUnverifyForm && (
+                <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 text-white">
+                            <div className="flex items-center">
+                                <div className="p-3 bg-white/20 rounded-xl mr-4">
+                                    <FiXCircle className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">Unverify Account</h3>
+                                    <p className="text-amber-100 text-sm mt-1">
+                                        Please provide a reason for unverification
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Form Content */}
+                        <div className="px-5 py-4">
+                            <div className="space-y-3">
+                                {/* Reason buttons */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Select Reason(s)
+                                    </label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {[
+                                            { value: "Vehicle", label: "Wrong Vehicle Details" },
+                                            { value: "License", label: "Wrong Driver License" },
+                                            { value: "Bank", label: "Wrong Bank Details" },
+                                            { value: "Insurance", label: "Wrong Insurance Details" },
+                                        ].map((reason) => {
+                                            const isSelected = selectedReasons.includes(reason.value);
+                                            return (
+                                                <button
+                                                    key={reason.value}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            setSelectedReasons(
+                                                                selectedReasons.filter((r) => r !== reason.value)
+                                                            );
+                                                        } else {
+                                                            setSelectedReasons([...selectedReasons, reason.value]);
+                                                        }
+                                                    }}
+                                                    className={`p-2.5 text-left rounded-lg border text-sm transition-all ${isSelected
+                                                        ? "border-amber-500 bg-amber-50 text-amber-700"
+                                                        : "border-gray-200 hover:border-amber-300 hover:bg-amber-50"
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center">
+                                                        <div
+                                                            className={`w-4 h-4 rounded-full border flex items-center justify-center mr-2 ${isSelected
+                                                                ? "border-amber-500 bg-amber-500 text-white"
+                                                                : "border-gray-300"
+                                                                }`}
+                                                        >
+                                                            {isSelected && <FiCheckCircle className="h-3 w-3" />}
+                                                        </div>
+                                                        {reason.label}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="bg-gray-50 px-5 py-3 flex justify-end space-x-2">
+                            <button
+                                onClick={() => {
+                                    setSelectedReasons([]);   // ✅ clear selections
+                                    setUnverifyReason("");    // clear notes
+                                    setShowUnverifyForm(false); // close popup
+                                }}
+                                className="px-3 py-2 border rounded-lg text-sm hover:bg-gray-100 transition-colors"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (!selectedReasons.length) {
+                                        showSnackbar("Please select at least one reason", "error");
+                                        return;
+                                    }
+
+                                    // 👉 pass array of reasons + notes
+                                    handleConfirmAction({
+                                        reasons: selectedReasons,
+                                        notes: unverifyReason,
+                                    });
+
+                                    setSelectedReasons([]);   // ✅ clear selections after confirm
+                                    setUnverifyReason("");    // clear notes
+                                    setShowUnverifyForm(false); // close popup
+                                }}
+                                disabled={!selectedReasons.length}
+                                className="px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-amber-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
             {/* Confirmation Popup */}
             {showConfirmation && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                            Confirm Action
-                        </h3>
-                        
-                        <p className="text-gray-600 mb-6">
-                            {actionType === 'block' && 'Are you sure you want to mark this user as inactive?'}
-                            {actionType === 'unblock' && 'Are you sure you want to mark this user as active?'}
-                            {actionType === 'delete' && 'Are you sure you want to delete this user? This action cannot be undone.'}
-                        </p>
-                        
-                        <div className="flex justify-end space-x-3">
+                <div className="fixed inset-0 bg-opacity-10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 max-w-md w-full mx-4 overflow-hidden transform transition-all duration-300 scale-95 hover:scale-100">
+                        <div className={`p-6 text-white ${actionType === 'delete' ? 'bg-gradient-to-r from-red-500 to-red-600' :
+                            actionType === 'block' ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
+                                'bg-gradient-to-r from-green-500 to-emerald-500'
+                            }`}>
+                            <div className="flex items-start">
+                                <div className="p-3 bg-white/20 rounded-xl mr-4 flex-shrink-0">
+                                    {actionType === 'delete' ? <FiTrash2 className="h-7 w-7" /> :
+                                        actionType === 'block' ? <FiUserX className="h-7 w-7" /> :
+                                            <FiCheckCircle className="h-7 w-7" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xl font-bold mb-2">
+                                        {actionType === 'delete' ? 'Delete Account' :
+                                            actionType === 'block' ? 'Mark as Inactive' :
+                                                'Mark as Active'}
+                                    </h3>
+                                    <p className="text-white/90 text-sm leading-relaxed">
+                                        {actionType === 'delete' ? 'This action cannot be undone. All driver data will be permanently removed from our systems.' :
+                                            actionType === 'block' ? 'Driver will be temporarily suspended and won\'t be able to access their account or receive trips.' :
+                                                'Driver account will be fully restored with all previous access and functionality.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 max-h-60 overflow-y-auto">
+                            <div className="space-y-4">
+                                <p className="text-gray-700 leading-relaxed">
+                                    {actionType === 'delete' && 'Permanently deleting this account will remove all driver information, trip history, and associated data. This action is irreversible.'}
+                                    {actionType === 'block' && 'Temporarily blocking this account will prevent the driver from logging in, accepting trips, or accessing any platform features.'}
+                                    {actionType === 'unblock' && 'Reactivating this account will restore the driver\'s ability to login, accept trips, and use all platform features immediately.'}
+                                </p>
+
+                                {actionType === 'delete' && (
+                                    <div className="bg-red-50/80 border border-red-200 rounded-xl p-4 backdrop-blur-sm">
+                                        <div className="flex items-start">
+                                            <FiAlertCircle className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <span className="text-sm font-semibold text-red-800 block mb-1">Critical Warning</span>
+                                                <span className="text-sm text-red-700">This action is permanent and cannot be reversed. All driver data will be completely erased from our database.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {actionType === 'block' && (
+                                    <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 backdrop-blur-sm">
+                                        <div className="flex items-start">
+                                            <FiAlertCircle className="h-5 w-5 text-amber-500 mr-3 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <span className="text-sm font-semibold text-amber-800 block mb-1">Temporary Action</span>
+                                                <span className="text-sm text-amber-700">This is a reversible action. The driver can be reactivated at any time from the admin panel.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50/80 backdrop-blur-sm px-6 py-5 flex justify-end space-x-4 border-t border-gray-200/50">
                             <button
                                 onClick={() => setShowConfirmation(false)}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-all duration-200 font-medium hover:shadow-sm disabled:opacity-50"
                                 disabled={isUpdating}
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleConfirmAction}
-                                className={`px-4 py-2 rounded-md text-white ${
-                                    actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' :
-                                    actionType === 'block' ? 'bg-yellow-600 hover:bg-yellow-700' :
-                                    'bg-green-600 hover:bg-green-700'
-                                }`}
+                                className={`px-5 py-2.5 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed ${actionType === 'delete' ? 'bg-red-600 hover:bg-red-700' :
+                                    actionType === 'block' ? 'bg-amber-600 hover:bg-amber-700' :
+                                        'bg-green-600 hover:bg-green-700'
+                                    }`}
                                 disabled={isUpdating}
                             >
-                                {isUpdating ? 'Processing...' : 'Confirm'}
+                                {isUpdating ? (
+                                    <div className="flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Processing...
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center">
+                                        {actionType === 'delete' ? <FiTrash2 className="mr-2 h-4 w-4" /> :
+                                            actionType === 'block' ? <FiUserX className="mr-2 h-4 w-4" /> :
+                                                <FiCheckCircle className="mr-2 h-4 w-4" />}
+                                        {actionType === 'delete' ? 'Delete Permanently' :
+                                            actionType === 'block' ? 'Confirm Inactive' :
+                                                'Confirm Active'}
+                                    </div>
+                                )}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+
 
             {/* Snackbar for notifications */}
             <Snackbar
