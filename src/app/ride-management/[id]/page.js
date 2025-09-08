@@ -24,14 +24,17 @@ import {
     FiMap,
     FiTrendingUp,
     FiLock,
+    FiCopy,
+    FiStar,
+    FiHash
+    
 } from 'react-icons/fi';
 import Snackbar from '@/components/layout/Snackbar';
-
+import { MdOutlineDirectionsCar } from "react-icons/md";
 export default function UserProfilePage() {
     const { id } = useParams();
     const router = useRouter();
 
-    const [user, setUser] = useState(null);
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('profile'); // 'profile' or 'trips'
@@ -40,23 +43,58 @@ export default function UserProfilePage() {
         message: '',
         type: 'success'
     });
+    const [copied, setCopied] = useState("");
+    const [showFullUserComment, setShowFullUserComment] = useState(false);
+    const [showFullDriverComment, setShowFullDriverComment] = useState(false);
 
+    const renderComment = (comment, showFull, setShowFull) => {
+        if (!comment) return "—";
+        const isLong = comment.length > 100; // Adjust the length threshold
+        if (!isLong) return comment;
+
+        return (
+            <>
+                {showFull ? comment : `${comment.slice(0, 100)}...`}
+                <button
+                    onClick={() => setShowFull(!showFull)}
+                    className="ml-2 text-indigo-600 text-sm"
+                >
+                    {showFull ? "See Less" : "See More"}
+                </button>
+            </>
+        );
+    };
+    const StarRating = ({ value = 0, max = 5 }) => {
+        return (
+            <div className="flex">
+                {[...Array(max)].map((_, i) => (
+                    <FiStar
+                        key={i}
+                        className={`w-4 h-4 ${i < value ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                            }`}
+                    />
+                ))}
+            </div>
+        );
+    };
+
+
+    const handleCopy = (text, type) => {
+        navigator.clipboard.writeText(text);
+        setCopied(type);
+        setTimeout(() => setCopied(""), 1500); // reset after 1.5s
+    };
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 setLoading(true);
-                const resUser = await getAllRide(id);
 
-                if (resUser?.statusCode === 200 && resUser?.status) {
-                    setUser(resUser.data);
-                } else {
-                    throw new Error(resUser?.message || 'Failed to fetch user data');
-                }
 
                 // fetch trips
                 const resTrips = await getrideById(id);
                 if (resTrips?.statusCode === 200 && resTrips?.status) {
                     // Check if data is nested in a data property
+                    console.log()
                     const tripsData = resTrips.data.data || resTrips.data;
                     setTrips(tripsData);
                 } else {
@@ -179,23 +217,7 @@ export default function UserProfilePage() {
         return value !== null && value !== undefined ? value : fallback;
     };
 
-    // Calculate trip statistics
-    const calculateTripStats = () => {
-        const completedTrips = trips.filter(trip => trip.status === 'Completed').length;
-        const cancelledTrips = trips.filter(trip => trip.status === 'Cancelled').length;
-        const totalSpent = trips
-            .filter(trip => trip.status === 'Completed' && trip.fareDetails?.totalFare)
-            .reduce((sum, trip) => sum + trip.fareDetails.totalFare, 0);
-        
-        return {
-            total: trips.length,
-            completed: completedTrips,
-            cancelled: cancelledTrips,
-            totalSpent: totalSpent
-        };
-    };
 
-    const tripStats = calculateTripStats();
 
     if (loading) {
         return (
@@ -205,15 +227,15 @@ export default function UserProfilePage() {
         );
     }
 
-    if (!user) {
+    if (!trips) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="text-center max-w-md">
                     <div className="mx-auto h-16 w-16 text-red-400 mb-4">
                         <FiXCircle className="w-full h-full" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">User Not Found</h2>
-                    <p className="text-gray-600 mb-6">The user you're looking for doesn't exist or couldn't be loaded.</p>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Trip Not Found</h2>
+                    <p className="text-gray-600 mb-6">The Trip you're looking for doesn't exist or couldn't be loaded.</p>
                     <button
                         onClick={() => router.back()}
                         className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
@@ -247,7 +269,7 @@ export default function UserProfilePage() {
                             >
                                 Trip Details
                             </button>
-                           
+
                         </nav>
                     </div>
 
@@ -255,16 +277,13 @@ export default function UserProfilePage() {
                         {activeTab === 'profile' ? (
                             <>
                                 {/* User Stats Overview */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                                {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                                     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
                                         <div className="flex items-center">
                                             <div className="p-2 bg-indigo-100 rounded-lg mr-3">
                                                 <FiTrendingUp className="text-indigo-600" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-indigo-700">Total Trips</p>
-                                                <p className="text-xl font-bold text-indigo-900">{tripStats.total}</p>
-                                            </div>
+                                            
                                         </div>
                                     </div>
                                     <div className="bg-green-50 p-4 rounded-lg border border-green-100">
@@ -272,10 +291,7 @@ export default function UserProfilePage() {
                                             <div className="p-2 bg-green-100 rounded-lg mr-3">
                                                 <FiCheckCircle className="text-green-600" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-green-700">Completed</p>
-                                                <p className="text-xl font-bold text-green-900">{tripStats.completed}</p>
-                                            </div>
+                                           
                                         </div>
                                     </div>
                                     <div className="bg-red-50 p-4 rounded-lg border border-red-100">
@@ -300,221 +316,513 @@ export default function UserProfilePage() {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
 
-                                {/* Profile details */}
+                                {/* Trip details */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                    {/* Personal Information */}
+                                    {/* Driver Information */}
                                     <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiUser className="mr-2 text-indigo-600" /> Personal Information
+                                                <FiUser className="mr-2 text-indigo-600" /> Driver Information
                                             </h3>
                                         </div>
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <p className="text-sm text-gray-500 mb-1">Full Name</p>
-                                                    <p className="font-medium text-gray-900">{getSafeValue(user.name)}</p>
+                                                    <p className="font-medium text-gray-900">{getSafeValue(trips?.driverId?.name)}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm text-gray-500 mb-1">User ID</p>
-                                                    <p className="font-medium text-gray-900 text-sm">{getSafeValue(user._id, 'N/A')}</p>
+                                                    <p className="text-sm text-gray-500 mb-1">DriverId</p>
+                                                    <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.driverId?._id, 'N/A')}</p>
                                                 </div>
                                             </div>
                                             <div className="border-t border-gray-100 pt-4">
-                                                <p className="text-sm text-gray-500 mb-1">Email Address</p>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <FiMail className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.email)}</p>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    {/* Email */}
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-gray-500 mb-1">Email Address</p>
+                                                        <div className="flex items-center">
+                                                            <FiMail className="mr-2 text-gray-400 flex-shrink-0" />
+                                                            <p className="font-medium text-gray-900 truncate">
+                                                                {getSafeValue(trips?.driverId?.email)}
+                                                            </p>
+                                                            <button
+                                                                onClick={() => handleCopy(getSafeValue(trips?.driverId?.email), "email")}
+                                                                className="ml-2 text-gray-500 hover:text-blue-600"
+                                                                title="Copy Email"
+                                                            >
+                                                                <FiCopy />
+                                                            </button>
+                                                            {copied === "email" && (
+                                                                <span className="ml-2 text-xs text-green-600">Copied!</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {user.isEmailVerified ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
-                                                            <FiCheckCircle className="mr-1" /> Verified
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
-                                                            <FiXCircle className="mr-1" /> Unverified
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Phone Number</p>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <FiPhone className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.phone)}</p>
-                                                    </div>
-                                                    {user.isPhoneVerified ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center">
-                                                            <FiCheckCircle className="mr-1" /> Verified
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center">
-                                                            <FiXCircle className="mr-1" /> Unverified
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Account Created</p>
-                                                    <div className="flex items-center">
-                                                        <FiCalendar className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">{formatDate(user.createdAt)}</p>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">Last Updated</p>
-                                                    <div className="flex items-center">
-                                                        <FiCalendar className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">{formatDate(user.updatedAt)}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    {/* Location & Preferences */}
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiMapPin className="mr-2 text-indigo-600" /> Location & Preferences
-                                            </h3>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
+                                                    {/* Phone */}
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                                                        <div className="flex items-center">
+                                                            <FiPhone className="mr-2 text-gray-400 flex-shrink-0" />
+                                                            <p className="font-medium text-gray-900 break-all">
+                                                                {getSafeValue(trips?.driverId?.phone)}
+                                                            </p>
+                                                            <button
+                                                                onClick={() => handleCopy(getSafeValue(trips?.driverId?.phone), "phone")}
+                                                                className="ml-2 text-gray-500 hover:text-blue-600"
+                                                                title="Copy Phone"
+                                                            >
+                                                                <FiCopy />
+                                                            </button>
+                                                            {copied === "phone" && (
+                                                                <span className="ml-2 text-xs text-green-600">Copied!</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+
+                                            <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                                                 <div>
                                                     <p className="text-sm text-gray-500 mb-1">Country</p>
                                                     <div className="flex items-center">
                                                         <FiGlobe className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.country)}</p>
+                                                        <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.driverId?.country)}</p>
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 mb-1">Currency</p>
                                                     <div className="flex items-center">
                                                         <FiDollarSign className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900">{getSafeValue(user.currency)}</p>
+                                                        <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.driverId?.currency)}</p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-gray-500 mb-1">Location Coordinates</p>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <FiMap className="mr-2 text-gray-400" />
-                                                        <p className="font-medium text-gray-900 text-sm">
-                                                            {user.location?.coordinates ?
-                                                                `${user.location.coordinates[0]}, ${user.location.coordinates[1]}` :
-                                                                'Not set'
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                    <button className="text-indigo-600 hover:text-indigo-800 text-xs font-medium">
-                                                        View Map
-                                                    </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Customer Information */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                                                <FiUser className="mr-2 text-indigo-600" /> Customer Information
+                                            </h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Full Name</p>
+                                                    <p className="font-medium text-gray-900">{getSafeValue(trips?.userId?.name)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">CustomerId</p>
+                                                    <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.userId?._id, 'N/A')}</p>
                                                 </div>
                                             </div>
                                             <div className="border-t border-gray-100 pt-4">
-                                                <p className="text-sm text-gray-500 mb-1">Preferred Payment Method</p>
-                                                <div className="flex items-center">
-                                                    <FiCreditCard className="mr-2 text-gray-400" />
-                                                    <p className="font-medium text-gray-900">{getSafeValue(user.paymentmode)}</p>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    {/* Email */}
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-gray-500 mb-1">Email Address</p>
+                                                        <div className="flex items-center">
+                                                            <FiMail className="mr-2 text-gray-400 flex-shrink-0" />
+                                                            <p className="font-medium text-gray-900 truncate">
+                                                                {getSafeValue(trips?.userId?.email)}
+                                                            </p>
+                                                            <button
+                                                                onClick={() => handleCopy(getSafeValue(trips?.userId?.email), "email")}
+                                                                className="ml-2 text-gray-500 hover:text-blue-600"
+                                                                title="Copy Email"
+                                                            >
+                                                                <FiCopy />
+                                                            </button>
+                                                            {copied === "email" && (
+                                                                <span className="ml-2 text-xs text-green-600">Copied!</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Phone */}
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                                                        <div className="flex items-center">
+                                                            <FiPhone className="mr-2 text-gray-400 flex-shrink-0" />
+                                                            <p className="font-medium text-gray-900 break-all">
+                                                                {getSafeValue(trips?.userId?.phone)}
+                                                            </p>
+                                                            <button
+                                                                onClick={() => handleCopy(getSafeValue(trips?.userId?.phone), "phone")}
+                                                                className="ml-2 text-gray-500 hover:text-blue-600"
+                                                                title="Copy Phone"
+                                                            >
+                                                                <FiCopy />
+                                                            </button>
+                                                            {copied === "phone" && (
+                                                                <span className="ml-2 text-xs text-green-600">Copied!</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
+
+
+
+                                            <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Country</p>
+                                                    <div className="flex items-center">
+                                                        <FiGlobe className="mr-2 text-gray-400" />
+                                                        <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.userId?.country)}</p>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-gray-500 mb-1">Currency</p>
+                                                    <div className="flex items-center">
+                                                        <FiDollarSign className="mr-2 text-gray-400" />
+                                                        <p className="font-medium text-gray-900 text-sm">{getSafeValue(trips?.userId?.currency)}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
+
                                 </div>
 
-                                {/* Financial Information */}
+                                {/* Vehicle Details */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm mb-5">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiDollarSign className="mr-2 text-indigo-600" /> Financial Information
+                                                <FiTruck className="mr-2 text-indigo-600" /> Vehicle Details
                                             </h3>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                                <p className="text-sm text-indigo-700 mb-1">Wallet Balance</p>
-                                                <p className="text-2xl font-bold text-indigo-900">₹{getSafeValue(user.WalletBalance, 0)}</p>
+
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Brand</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.brand}</span>
                                             </div>
-                                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                                                <p className="text-sm text-amber-700 mb-1">Due Payments</p>
-                                                <p className="text-2xl font-bold text-amber-900">₹{getSafeValue(user.duePay, 0)}</p>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Model</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.model}</span>
                                             </div>
-                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                                <p className="text-sm text-purple-700 mb-1">Xtra Coins</p>
-                                                <p className="text-2xl font-bold text-purple-900">{getSafeValue(user.xtracoin, 0)}</p>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Year</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.year}</span>
                                             </div>
-                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                <p className="text-sm text-gray-700 mb-1">Avg. Trip Cost</p>
-                                                <p className="text-2xl font-bold text-gray-900">
-                                                    ₹{tripStats.completed > 0 ? Math.round(tripStats.totalSpent / tripStats.completed) : 0}
-                                                </p>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Color</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.color}</span>
+                                            </div>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Plate Number</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.plateNumber}</span>
+                                            </div>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Seating Capacity</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.seatingCapacity}</span>
+                                            </div>
+
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Electric</span>
+                                                <span className="font-medium text-gray-900">{trips?.driverId?.VehicalDetails?.electric}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Account Status */}
+                                    {/* Fare Breakup */}
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm mb-5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                                                <FiDollarSign className="mr-2 text-indigo-600" /> Fare Breakup
+                                            </h3>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {/* Base Fare */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Base Fare</span>
+                                                <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.baseFare)}</span>
+                                            </div>
+
+                                            {/* Distance Fare */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Distance Fare</span>
+                                                <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.distanceFare)}</span>
+                                            </div>
+
+                                            {/* Time Fare */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Time Fare</span>
+                                                <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.timeFare)}</span>
+                                            </div>
+
+                                            {/* Platform Fee */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Platform Fee</span>
+                                                <span className="font-medium text-gray-900">
+                                                    ₹{getSafeValue(trips?.fareDetails?.platformFee)} ({getSafeValue(trips?.fareDetails?.platformFeePercentage)}%)
+                                                </span>
+                                            </div>
+
+                                            {/* Surge */}
+                                            {trips?.fareDetails?.surge > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Surge</span>
+                                                    <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.surge)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Toll Fees */}
+                                            {trips?.fareDetails?.tollFees > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Toll Fees</span>
+                                                    <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.tollFees)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Cancel Fare */}
+                                            {trips?.fareDetails?.cancelFare > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Cancel Fee</span>
+                                                    <span className="font-medium text-gray-900">₹{getSafeValue(trips?.fareDetails?.cancelFare)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Divider */}
+                                            <hr className="my-2 border-gray-200" />
+
+                                            {/* Total Fare */}
+                                            <div className="flex justify-between text-base font-semibold">
+                                                <span>Total Fare</span>
+                                                <span>₹{getSafeValue(trips?.fareDetails?.totalFare)}</span>
+                                            </div>
+
+                                            {/* Driver Earnings */}
+                                            <div className="flex justify-between text-sm text-green-700">
+                                                <span>Driver Gets</span>
+                                                <span className="font-semibold">₹{getSafeValue(trips?.fareDetails?.driverGets)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+{/* 💳 Payment Details */}
+<div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-md">
+  <div className="flex items-center justify-between mb-5">
+    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+      <FiCreditCard className="mr-2 text-indigo-600" /> Payment Details
+    </h3>
+  </div>
+
+  <div className="space-y-4">
+    {/* Transaction ID */}
+    <div className="flex justify-between text-sm">
+      <span className="flex items-center text-gray-500">
+        <FiHash className="mr-1" /> Transaction ID
+      </span>
+      <span className="font-medium text-gray-900">
+        {trips?.payment?.paymentDetails?.transactionId || "—"}
+      </span>
+    </div>
+
+    {/* Payment Method */}
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">Method</span>
+      <span className="font-medium text-gray-900">
+        {trips?.payment?.method || "—"}
+      </span>
+    </div>
+
+    {/* Payment Time */}
+    <div className="flex justify-between text-sm">
+      <span className="flex items-center text-gray-500">
+        <FiClock className="mr-1" /> Payment Time
+      </span>
+      <span className="font-medium text-gray-900">
+        {trips?.payment?.paymentDetails?.paymentTime
+          ? new Date(trips.payment.paymentDetails.paymentTime).toLocaleString()
+          : "—"}
+      </span>
+    </div>
+
+    {/* Amount */}
+    <div className="flex justify-between text-sm">
+      <span className="flex items-center text-gray-500">
+        <FiDollarSign className="mr-1" /> Amount
+      </span>
+      <span className="font-semibold text-gray-900">
+        ₹{trips?.payment?.amount || 0}
+      </span>
+    </div>
+
+    {/* Status */}
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">Status</span>
+      <span
+        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+          trips?.payment?.isPaid
+            ? "bg-green-100 text-green-700"
+            : "bg-red-100 text-red-700"
+        }`}
+      >
+        {trips?.payment?.isPaid ? "Paid" : "Unpaid"}
+      </span>
+    </div>
+  </div>
+</div>
+
+                                    {/* 🌍 Location Details */}
+                                    <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-md">
+                                        <div className="flex items-center justify-between mb-5">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                                                <FiMapPin className="mr-2 text-indigo-600" /> Location Details
+                                            </h3>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {/* Pickup */}
+                                            <div>
+                                                <span className="block text-xs uppercase text-gray-400">Pickup</span>
+                                                <p className="text-sm font-medium text-gray-900">{trips?.pickupLocation?.address}</p>
+                                            </div>
+
+                                            {/* Drop */}
+                                            <div>
+                                                <span className="block text-xs uppercase text-gray-400">Drop</span>
+                                                <p className="text-sm font-medium text-gray-900">{trips?.dropLocation?.address}</p>
+                                            </div>
+
+                                            {/* Date */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="flex items-center text-gray-500">
+                                                    <FiCalendar className="mr-1 text-indigo-500" /> Date
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {trips?.travelDate ? new Date(trips.travelDate).toLocaleDateString() : "—"}
+                                                </span>
+                                            </div>
+
+                                            {/* Time */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="flex items-center text-gray-500">
+                                                    <FiClock className="mr-1 text-indigo-500" /> Time
+                                                </span>
+                                                <span className="font-medium text-gray-900">{trips?.travelTime || "—"}</span>
+                                            </div>
+
+                                            {/* Distance */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="flex items-center text-gray-500">
+                                                    <MdOutlineDirectionsCar className="mr-1 text-indigo-500" /> Distance
+                                                </span>
+                                                <span className="font-medium text-gray-900">{trips?.fareDetails?.distanceKm} km</span>
+                                            </div>
+
+                                            {/* Duration */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="flex items-center text-gray-500">
+                                                    <FiClock className="mr-1 text-indigo-500" /> Duration
+                                                </span>
+                                                <span className="font-medium text-gray-900">{trips?.fareDetails?.timeMin} min</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Review */}
+
                                     <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                                                <FiShield className="mr-2 text-indigo-600" /> Account Status
+                                                <FiCreditCard className="mr-2 text-indigo-600" /> Driver Review
                                             </h3>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Account Status</span>
-                                                {user.isBlocked ? (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiLock className="mr-1" /> Blocked
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Active
-                                                    </span>
-                                                )}
+
+                                        <div className="space-y-3">
+                                            {/* Comment */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Comment</span>
+                                                <span className="font-medium text-gray-900">
+                                                    {renderComment(trips?.driverreview?.comment)}
+                                                </span>
                                             </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Deletion Status</span>
-                                                {user.isDeleted ? (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiXCircle className="mr-1" /> Deleted
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Active
-                                                    </span>
-                                                )}
+
+                                            {/* Behavior */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Behavior</span>
+                                                <StarRating value={trips?.driverreview?.customerBehavior || 0} />
                                             </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Email Verification</span>
-                                                {user.isEmailVerified ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Verified
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiXCircle className="mr-1" /> Pending
-                                                    </span>
-                                                )}
+
+                                            {/* Waiting Time */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Waiting Time</span>
+                                                <StarRating value={trips?.driverreview?.waitingTime || 0} />
                                             </div>
-                                            <div className="flex flex-col p-3 bg-white rounded-lg border border-gray-200">
-                                                <span className="text-sm text-gray-500 mb-1">Phone Verification</span>
-                                                {user.isPhoneVerified ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiCheckCircle className="mr-1" /> Verified
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full self-start flex items-center">
-                                                        <FiXCircle className="mr-1" /> Pending
-                                                    </span>
-                                                )}
+
+                                            {/* Hygiene */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Hygiene</span>
+                                                <StarRating value={trips?.driverreview?.hygiene || 0} />
                                             </div>
+
+                                            {/* Generosity */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Generosity</span>
+                                                <StarRating value={trips?.driverreview?.generosity || 0} />
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    {/* Review */}
+
+                                    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                                                <FiCreditCard className="mr-2 text-indigo-600" /> Customer Review
+                                            </h3>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {/* Comment */}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Comment</span>
+                                                <span className="font-medium text-gray-900">
+                                                    {renderComment(trips?.userreview?.comment)}
+                                                </span>
+                                            </div>
+
+                                            {/* Behavior */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Behavior</span>
+                                                <StarRating value={trips?.userreview?.customerBehavior || 0} />
+                                            </div>
+
+                                            {/* Waiting Time */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Waiting Time</span>
+                                                <StarRating value={trips?.userreview?.waitingTime || 0} />
+                                            </div>
+
+                                            {/* Hygiene */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Hygiene</span>
+                                                <StarRating value={trips?.userreview?.hygiene || 0} />
+                                            </div>
+
+                                            {/* Generosity */}
+                                            <div className="flex justify-between text-sm items-center">
+                                                <span className="text-gray-500">Generosity</span>
+                                                <StarRating value={trips?.userreview?.generosity || 0} />
+                                            </div>
+
                                         </div>
                                     </div>
                                 </div>

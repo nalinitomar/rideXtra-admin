@@ -2,7 +2,7 @@
 import { FiPlus, FiLoader, FiFrown, FiEye, FiRefreshCw } from 'react-icons/fi';
 import { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import { getAllRide } from '@/services/rideManagementService ';
+import { GetAllBusRide } from '@/services/rideManagementService ';
 import { useUserStore } from '@/store/userStore';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -22,7 +22,7 @@ export default function UserManagementPage() {
     pending: { status: "Pending" },
     inprogress: { status: "InProgress" },
     cancel: { status: "Cancelled" },
-   
+
   };
 
   const timeoutRef = useRef(null);
@@ -44,7 +44,7 @@ export default function UserManagementPage() {
 
       console.log("Fetching with:", { page, filter, rowsPerPage });
 
-      const response = await getAllRide(page, rowsPerPage, filter);
+      const response = await GetAllBusRide(page, rowsPerPage, filter);
       console.log("data get from response", response?.data?.data)
       setUsers(response?.data?.data || []);
       setTotalPages(response?.data?.totalPages || 1);
@@ -256,8 +256,14 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-4 py-3 font-medium">{data?.userId?.name}</td>
                       <td className="px-4 py-3">{`+${data?.userId?.phone || 9005653583}`}</td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">{`${data?.driverId?.name || "N/A"}`}</td>
-                      <td className="px-4 py-3">{`+${data?.driverId?.phone || 9034247524}`}</td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        {data?.driverId ? data.driverId.name : "Driver not assigned"}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {data?.driverId ? `+${data.driverId.phone}` : "Driver not assigned"}
+                      </td>
+
                       <td className="px-4 py-3">{`${data?.rideType}`}</td>
                       <td className="px-4 py-3">
                         <span
@@ -277,7 +283,7 @@ export default function UserManagementPage() {
 
                       <td className="px-4 py-3">
                         <Link
-                          href={`/ride-management/${data._id}`}
+                          href={`/bus-management/${data._id}`}
                           className="inline-flex justify-center items-center w-full max-w-[120px] mx-auto
                                      px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md 
                                      hover:bg-indigo-200 transition"

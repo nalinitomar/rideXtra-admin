@@ -28,6 +28,12 @@ export async function getAllUserById(id) {
 }
 
 
+export async function getUserTripState(id) {
+  return authorizedFetch(`/admin/get-user-trip-state?userId=${id}`, {
+    method: 'GET',
+  });
+}
+
 
 
 export async function getAllUserTripById(userId, page = null, limit = null, filter = {}) {
@@ -44,5 +50,17 @@ export async function getAllUserTripById(userId, page = null, limit = null, filt
 
   return authorizedFetch(`/admin/get-user-trips?${query.toString()}`, {
     method: "GET",
+  });
+}
+
+
+
+export async function ChangeUserStatus(id , status) {
+  console.log("block pass api" , status)
+  const block = status === "inactive" ? true : false;
+  console.log("block" , block)
+  return authorizedFetch(`/admin/change-user-status`, {
+    body:JSON.stringify({id, block}),
+    method: 'POST',
   });
 }

@@ -29,12 +29,20 @@ export async function getdriverById(id) {
     method: 'GET',
   });
 }
-
-export async function getAllUserTripById(id) {
-  return authorizedFetch(`/admin/get-user-trips?userId=${id}`, {
-    method: 'GET',
+export async function getAllUserTripById(id ,page = null, limit = null, filter = {}) {
+  const query = new URLSearchParams();
+  if (Object.keys(filter).length === 0) {
+    if (page) query.append("page", page);
+    if (limit) query.append("limit", limit);
+  }
+  if (Object.keys(filter).length > 0) {
+    query.append("filter", JSON.stringify(filter));
+  }
+  return authorizedFetch(`/admin/get-driver-trips?driverId=${id}&${query.toString()}`, {
+    method: "GET",
   });
 }
+
 
 export async function changeStatus(id, action, reason) {
   console.log("api call ->", id, action , reason);
@@ -83,4 +91,13 @@ export async function changeStatus(id, action, reason) {
       }),
     });
   }
+}
+
+
+
+
+export async function getdriverState(id) {
+  return authorizedFetch(`/admin/get-driver-trip-state?driverId=${id}`, {
+    method: 'GET',
+  });
 }

@@ -35,7 +35,7 @@ export default function Navbar({ onMenuClick }) {
         </div>
 
         {/* Search Bar - Desktop */}
-        <div className="hidden lg:block relative w-full max-w-md">
+        {/* <div className="hidden lg:block relative w-full max-w-md">
           <form onSubmit={handleSearch} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FiSearch className="h-5 w-5 text-gray-400" />
@@ -53,7 +53,7 @@ export default function Navbar({ onMenuClick }) {
               </kbd>
             </div>
           </form>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex items-center space-x-4">

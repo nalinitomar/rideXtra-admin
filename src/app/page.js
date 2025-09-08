@@ -146,12 +146,12 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="mt-2 flex justify-end">
-                <a
+                {/* <a
                   href="#"
                   className="text-sm text-indigo-600 hover:text-indigo-500 hover:underline"
                 >
                   Forgot password?
-                </a>
+                </a> */}
               </div>
             </div>
 

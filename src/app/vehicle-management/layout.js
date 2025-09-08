@@ -1,6 +1,6 @@
-// src/app/profile/layout.js
+// src/app/dashboard/layout.js
 import AppLayout from '@/components/layout/AppLayout';
 
-export default function KYCLayout({ children }) {
+export default function DashboardLayout({ children }) {
   return <AppLayout>{children}</AppLayout>;
 }

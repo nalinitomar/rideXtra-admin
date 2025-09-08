@@ -2,7 +2,7 @@
 import { FiPlus, FiLoader, FiFrown, FiEye, FiRefreshCw } from 'react-icons/fi';
 import { useEffect, useState, useRef } from 'react';
 import Link from "next/link";
-import { getAllRide } from '@/services/rideManagementService ';
+import { getAlldriver } from '@/services/driverManagement';
 import { useUserStore } from '@/store/userStore';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -18,11 +18,10 @@ export default function UserManagementPage() {
   const [selectedCountry, setSelectedCountry] = useState("us");
   const [selectedFilter, setSelectedFilter] = useState("");
   const filterMap = {
-    complete: { status: "Completed" },
-    pending: { status: "Pending" },
-    inprogress: { status: "InProgress" },
-    cancel: { status: "Cancelled" },
-   
+    active: { isBlocked: false },
+    inactive: { isBlocked: true },
+    verified: { isadminVerified: true },
+    unverified: { isadminVerified: false },
   };
 
   const timeoutRef = useRef(null);
@@ -44,8 +43,8 @@ export default function UserManagementPage() {
 
       console.log("Fetching with:", { page, filter, rowsPerPage });
 
-      const response = await getAllRide(page, rowsPerPage, filter);
-      console.log("data get from response", response?.data?.data)
+      const response = await getAlldriver(page, rowsPerPage, filter);
+
       setUsers(response?.data?.data || []);
       setTotalPages(response?.data?.totalPages || 1);
 
@@ -142,7 +141,7 @@ export default function UserManagementPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Ride Management</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Driver Management</h2>
             <p className="text-sm text-gray-500 mt-1">
               {isLoading ? "Loading..." : `Showing ${users.length} users${isSearching ? ' (search results)' : ''}`}
             </p>
@@ -150,7 +149,7 @@ export default function UserManagementPage() {
 
           <div className="flex items-center gap-3">
             {/* Phone input */}
-            {/* <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+            <div className="flex items-center gap-2 border rounded-md px-2 py-1">
               <PhoneInput
                 country={selectedCountry}
                 value={inputValue}
@@ -178,7 +177,7 @@ export default function UserManagementPage() {
                 disableDropdown={false}
                 specialLabel=""
               />
-            </div> */}
+            </div>
 
             {/* Filter Dropdown */}
             <select
@@ -187,10 +186,10 @@ export default function UserManagementPage() {
               className="px-3 py-2 border rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
             >
               <option value="">Filter</option>
-              <option value="complete">Complete</option>
-              <option value="pending">Pending</option>
-              <option value="cancel">Cancel</option>
-              <option value="inprogress">InProgress</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="verified">Verified</option>
+              <option value="unverified">Unverified</option>
             </select>
 
           </div>
@@ -236,12 +235,11 @@ export default function UserManagementPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-gray-600 font-medium">S.No</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">CustomerName</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">CustomerPhone</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">DriverName</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">DriverPhone</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">RideType</th>
+                    <th className="px-4 py-3 text-gray-600 font-medium">Driver Name</th>
+                    <th className="px-4 py-3 text-gray-600 font-medium">Phone</th>
+                    <th className="px-4 py-3 text-gray-600 font-medium">Country</th>
                     <th className="px-4 py-3 text-gray-600 font-medium">Status</th>
+                    <th className="px-4 py-3 text-gray-600 font-medium">Document Status</th>
                     <th className="px-4 py-3 text-gray-600 font-medium">Action</th>
                   </tr>
                 </thead>
@@ -254,30 +252,31 @@ export default function UserManagementPage() {
                           : (currentPage - 1) * rowsPerPage + index + 1
                         }
                       </td>
-                      <td className="px-4 py-3 font-medium">{data?.userId?.name}</td>
-                      <td className="px-4 py-3">{`+${data?.userId?.phone || 9005653583}`}</td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">{`${data?.driverId?.name || "N/A"}`}</td>
-                      <td className="px-4 py-3">{`+${data?.driverId?.phone || 9034247524}`}</td>
-                      <td className="px-4 py-3">{`${data?.rideType}`}</td>
+                      <td className="px-4 py-3 font-medium">{data?.name}</td>
+                      <td className="px-4 py-3">{`+${data?.phone}`}</td>
+                      <td className="px-4 py-3">{`${data?.country}`}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${data?.isBlocked
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                          }`}>
+                          {data?.isBlocked ? 'Inactive' : 'Active'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${data?.status === "Pending" ? "bg-yellow-100 text-yellow-800" : ""}
-                          ${data?.status === "Accepted" ? "bg-blue-100 text-blue-800" : ""}
-                          ${data?.status === "Arrived" ? "bg-indigo-100 text-indigo-800" : ""}
-                          ${data?.status === "InProgress" ? "bg-purple-100 text-purple-800" : ""}
-                          ${data?.status === "Completed" ? "bg-green-100 text-green-800" : ""}
-                          ${data?.status === "Cancelled" ? "bg-red-100 text-red-800" : ""}
-                            `}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${data?.isadminVerified
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
-                          {data?.status}
+                          {data?.isadminVerified ? 'Verified' : 'Unverified'}
                         </span>
                       </td>
 
-
                       <td className="px-4 py-3">
                         <Link
-                          href={`/ride-management/${data._id}`}
+                          href={`/driver-management/${data._id}`}
                           className="inline-flex justify-center items-center w-full max-w-[120px] mx-auto
                                      px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md 
                                      hover:bg-indigo-200 transition"

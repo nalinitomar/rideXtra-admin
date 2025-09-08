@@ -6,7 +6,7 @@ import { getAllUser } from '@/services/userManagementService';
 import { useUserStore } from '@/store/userStore';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-
+import { formatPhoneNumber } from "react-phone-input-2";
 export default function UserManagementPage() {
   const { users, setUsers, currentPage, setCurrentPage } = useUserStore();
   const [isLoading, setIsLoading] = useState(users.length === 0);
@@ -16,7 +16,25 @@ export default function UserManagementPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [inputValue, setInputValue] = useState(""); // Store raw input without +
   const [selectedCountry, setSelectedCountry] = useState("us");
+  const [selectedFilter, setSelectedFilter] = useState("");
+  const filterMap = {
+    active: { isBlocked: false },
+    inactive: { isBlocked: true },
+    verified: { isadminVerified: true },
+    unverified: { isadminVerified: false },
+  };
+
   const timeoutRef = useRef(null);
+  const handleFilterChange = (e) => {
+    const value = e.target.value;
+    setSelectedFilter(value);
+
+    if (value && filterMap[value]) {
+      fetchUserList(1, filterMap[value]); // Apply filter
+    } else {
+      fetchUserList(1, {}); // Reset filter
+    }
+  };
 
   const fetchUserList = async (page = currentPage, filter = {}) => {
     try {
@@ -110,7 +128,7 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto p-4 md:p-4">
       {/* Add the style tag here */}
       <style jsx>{`
       .react-tel-input input::placeholder {
@@ -118,12 +136,12 @@ export default function UserManagementPage() {
         opacity: 1 !important;
       }
     `}</style>
-      <div className="bg-white shadow-sm border border-gray-100 rounded-xl">
+      <div className="bg-white shadow-sm border border-gray-100 rounded-xl ">
 
         {/* Header */}
-        <div className="flex flex-col p-4 sm:flex-row justify-between items-start sm:items-center  gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Users Management</h2>
             <p className="text-sm text-gray-500 mt-1">
               {isLoading ? "Loading..." : `Showing ${users.length} users${isSearching ? ' (search results)' : ''}`}
             </p>
@@ -161,17 +179,17 @@ export default function UserManagementPage() {
               />
             </div>
 
-            {/* Refresh button */}
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 transition disabled:opacity-50"
+            {/* Filter Dropdown */}
+            <select
+              value={selectedFilter}
+              onChange={handleFilterChange}
+              className="px-3 py-2 border rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
             >
-              <FiRefreshCw
-                className={`w-4 h-4 ${isLoading ? "animate-spin text-indigo-600" : ""}`}
-              />
-              Refresh
-            </button>
+              <option value="">Filter</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+
           </div>
         </div>
 
@@ -215,7 +233,7 @@ export default function UserManagementPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-gray-600 font-medium">S.No</th>
-                    <th className="px-4 py-3 text-gray-600 font-medium">User Name</th>
+                    <th className="px-4 py-3 text-gray-600 font-medium">Customer Name</th>
                     <th className="px-4 py-3 text-gray-600 font-medium">Phone</th>
                     <th className="px-4 py-3 text-gray-600 font-medium">Country</th>
                     <th className="px-4 py-3 text-gray-600 font-medium">Status</th>
@@ -233,7 +251,7 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-4 py-3 font-medium">{data?.name}</td>
                       <td className="px-4 py-3">{`+${data?.phone}`}</td>
-                      <td className="px-4 py-3">{data?.country}</td>
+                      <td className="px-4 py-3">{`${data?.country}`}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${data?.isBlocked
                           ? 'bg-red-100 text-red-800'
@@ -242,6 +260,8 @@ export default function UserManagementPage() {
                           {data?.isBlocked ? 'Inactive' : 'Active'}
                         </span>
                       </td>
+                     
+
                       <td className="px-4 py-3">
                         <Link
                           href={`/user-management/${data._id}`}
