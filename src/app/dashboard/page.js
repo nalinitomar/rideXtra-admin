@@ -110,8 +110,8 @@ export default function RiderAdminDashboard() {
       { title: 'Pending Rides', value: kpis.pending, icon: <FiClock className="h-6 w-6" />, color: 'bg-yellow-500' },
       { title: 'Cancelled Rides', value: kpis.cancelled, icon: <FiAlertCircle className="h-6 w-6" />, color: 'bg-red-500' },
       { title: 'Completed Today', value: kpis.completedToday, icon: <FiTruck className="h-6 w-6" />, color: 'bg-purple-500' },
-      { title: 'Total Revenue', value: kpis.totalRevenue, icon: <FiDollarSign className="h-6 w-6" />, color: 'bg-amber-500' },
       { title: 'Total Rides', value: kpis.totalRides, icon: <FiTruck className="h-6 w-6" />, color: 'bg-blue-500' },
+      { title: 'Total Revenue', value: kpis.totalRevenue, icon: <FiDollarSign className="h-6 w-6" />, color: 'bg-amber-500' },
     ]
     : [
       { title: 'Completed', value: kpis.completed, icon: <FiTruck className="h-6 w-6" />, color: 'bg-purple-500' },
@@ -253,8 +253,8 @@ export default function RiderAdminDashboard() {
             onChange={(e) => setOrderLimit(Number(e.target.value))}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
           >
-            {[10, 20, 30, 40, 50].map((num) => (
-              <option key={num} value={num}>Show {num}</option>
+            {[10, 20, 30, 40, 50 ,100].map((num) => (
+              <option key={num} value={num}>{num}</option>
             ))}
           </select>
         </div>
