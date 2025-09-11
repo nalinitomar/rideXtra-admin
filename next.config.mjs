@@ -44,8 +44,8 @@ const nextConfig = {
   },
 
   // --- If serving under /rideXtra-admin path (static or SSR behind subdir), uncomment:
-  basePath: '/RideXtra',
-  assetPrefix: '/RideXtra/',
+  // basePath: '/RideXtra',
+  // assetPrefix: '/RideXtra/',
 };
 
 export default nextConfig;
