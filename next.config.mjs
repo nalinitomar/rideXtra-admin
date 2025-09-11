@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // --- Uncomment these if you deploy as a static export ---
-  output: 'export',
+  // output: 'export',
   // images: { unoptimized: true },
 
   images: {
