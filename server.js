@@ -1,15 +1,17 @@
-const { createServer } = require('http');  // Import Node's HTTP server
-const next = require('next');              // Import Next.js framework
+const next = require('next');
+const express = require('express');
 
-const dev = false;                         // Disable development mode (for production)
-const app = next({ dev });                 // Create Next.js instance
-const handle = app.getRequestHandler();    // Default request handler (handles pages, assets, API routes)
+const port = process.env.PORT || 3000;
+const dev = process.env.NODE_ENV !== 'production';
+const app = next({ dev });
+const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  createServer((req, res) => {             // Create HTTP server
-    handle(req, res);                      // Pass all requests to Next.js
-  }).listen(3001, (err) => {               // Listen on port 3001
-    if (err) throw err;
-    console.log('> Ready on http://localhost:3001');
+  const server = express();
+
+  server.all('*', (req, res) => handle(req, res));
+
+  server.listen(port, () => {
+    console.log(`🚀 Next.js running at http://localhost:${port}`);
   });
 });
