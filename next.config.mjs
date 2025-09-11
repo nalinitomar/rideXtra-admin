@@ -47,5 +47,5 @@ const nextConfig = {
   // basePath: '/RideXtra',
   // assetPrefix: '/RideXtra/',
 };
-
+//AniketXenel
 export default nextConfig;
