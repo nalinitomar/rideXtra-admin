@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '@/context/AuthContext';
-import Image from 'next/image'; // Import Next.js Image component
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,8 +27,8 @@ export default function LoginPage() {
         return;
       }
 
-     const Login  = await login({ email, password });
-     console.log("login=========" ,Login )
+      const Login = await login({ email, password });
+      console.log("login=========", Login);
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -35,35 +36,63 @@ export default function LoginPage() {
     }
   };
 
+  const [bikeVisible, setBikeVisible] = useState(true);
+
+  useEffect(() => {
+    // Immediately show bike on every restart or page load
+    setBikeVisible(true);
+
+    // Hide after animation ends (~15s)
+    const timer = setTimeout(() => setBikeVisible(false), 15000);
+    return () => clearTimeout(timer);
+  }, []); // runs once on mount (page reload or restart)
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left section - Branding with Logo */}
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 relative overflow-hidden">
+      {/* 🏍️ Bike Animation */}
+      {bikeVisible && (
+        <motion.div
+          key={`bike-${Date.now()}`} // ensures animation restarts every reload
+          initial={{ x: '-120vw', rotate: -5 }}
+          animate={{ x: '130vw', rotate: 5 }}
+          transition={{
+            duration: 16, // 🐢 slow & smooth (increase to make slower)
+            ease: 'easeInOut',
+          }}
+          className="absolute bottom-12 left-0 z-30"
+        >
+          <Image
+            src="/Bike.png" // make sure your bike image is inside /public folder
+            alt="Rider Animation"
+            width={160}
+            height={100}
+            className="drop-shadow-xl select-none pointer-events-none"
+            priority
+          />
+        </motion.div>
+      )}
+
+      {/* Left Section - Branding */}
       <div className="md:w-1/2 bg-gradient-to-br from-indigo-900 to-purple-800 text-white flex flex-col justify-between p-5 md:p-12 relative overflow-hidden">
         <div className="z-10">
-          {/* Logo Section */}
           <div className="flex items-center mb-16">
-            {/* Replace with your actual logo */}
             <div className="relative w-32 h-32 mr-3">
               <Image
-                src="/Nas-Logo.svg" // Update with your logo path
+                src="/Nas-Logo.svg"
                 alt="Company Logo"
                 fill
                 className="object-contain"
                 priority
               />
             </div>
-            {/* <div className="text-2xl font-bold">
-              <span className="bg-white text-indigo-800 rounded-lg px-2 py-1 mr-2">Channel Partner</span>
-            </div> */}
           </div>
 
           <div className="max-w-md">
             <h1 className="text-4xl font-bold mb-4">Welcome to RideXtra Admin Panel</h1>
             <p className="text-lg text-indigo-200 mb-8">
-              Please log in with your authorized partner credentials to access the portal. If you experience any login issues, contact your partner account manager or our support team.
+              Secure access for authorized Ride App administrators only. Protect your credentials — 
+              contact support if you encounter any issues.
             </p>
-
             <div className="flex items-center space-x-2 text-indigo-200">
               <div className="w-8 h-px bg-indigo-400"></div>
               <span>Secure & reliable</span>
@@ -82,9 +111,9 @@ export default function LoginPage() {
         <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/10 to-transparent"></div>
       </div>
 
-      {/* Right section - Login form */}
-      <div className="md:w-1/2 flex items-center justify-center p-8 md:p-12">
-        <div className="w-full max-w-md">
+      {/* Right Section - Login Form */}
+      <div className="md:w-1/2 flex items-center justify-center p-8 md:p-12 relative">
+        <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold text-gray-800 mb-2">Sign in</h2>
             <p className="text-gray-600">Access your account to continue</p>
@@ -97,6 +126,7 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
+            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address
@@ -117,6 +147,7 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password
@@ -127,7 +158,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -146,16 +177,9 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
-              <div className="mt-2 flex justify-end">
-                {/* <a
-                  href="#"
-                  className="text-sm text-indigo-600 hover:text-indigo-500 hover:underline"
-                >
-                  Forgot password?
-                </a> */}
-              </div>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -176,7 +200,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
         </div>
       </div>
     </div>

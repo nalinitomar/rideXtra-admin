@@ -4,8 +4,15 @@ import {
   FiPlus, FiLoader, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight,
   FiX, FiSave, FiAlertTriangle, FiRefreshCw
 } from 'react-icons/fi';
-import { GetAllVehicleData, AddNewVehicle, EditVehiclePrice, DeleteVehicleType, ChangeStatusAccountType } from '@/services/admincontrol';
+import { 
+  GetAllVehicleData, 
+  AddNewVehicle, 
+  EditVehiclePrice, 
+  DeleteVehicleType, 
+  ChangeStatusAccountType 
+} from '@/services/admincontrol';
 
+// ---------- Helpers ----------
 function formatDateTime(iso) {
   const d = new Date(iso);
   const dd = String(d.getDate()).padStart(2, '0');
@@ -26,7 +33,6 @@ async function GetVehicleData() {
 }
 
 async function AddVehicleType(payload) {
-  console.log("add vehicle" , payload)
   return await AddNewVehicle(payload);
 }
 async function EditVehiclePrices(id, payload) {
@@ -48,6 +54,7 @@ async function runApi(fn, { onErrorMessage = 'Something went wrong.' } = {}) {
   }
 }
 
+// ---------- UI Components ----------
 function ConfirmModal({ open, title, message, onConfirm, onCancel, loading }) {
   if (!open) return null;
   return (
@@ -124,15 +131,14 @@ function Toaster({ toasts, onClose }) {
   );
 }
 
+// ---------- Vehicle Modal ----------
 function VehicleFormModal({ open, mode, value, onChange, onClose, onSubmit, loading }) {
   if (!open) return null;
 
   const setField = (k, v) => onChange({ ...value, [k]: v });
 
   const onlyLetters = (s) => s.replace(/[^a-zA-Z\s-]/g, '');
-  const numSanitize = (s) =>
-    s.replace(/[^\d.]/g, '')
-     .replace(/(\..*)\./g, '$1'); // single decimal
+  const numSanitize = (s) => s.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1'); 
 
   const isValidName = value.VehicalType?.trim().length >= 2;
   const isValidNumber = (n) => n !== '' && !Number.isNaN(Number(n));
@@ -143,77 +149,33 @@ function VehicleFormModal({ open, mode, value, onChange, onClose, onSubmit, load
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl">
-        <div className="p-4 border-b">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl">
+        <div className="p-6 border-b">
           <h3 className="font-semibold">{mode === 'add' ? 'Add Vehicle' : 'Edit Vehicle'}</h3>
         </div>
 
         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium text-gray-600">Vehicle Type</label>
-            <input
-              value={value.VehicalType}
-              onChange={(e) => setField('VehicalType', onlyLetters(e.target.value))}
-              placeholder="e.g., Mini, Sedan"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-            <p className="text-[11px] text-gray-500 mt-1">Letters, spaces, hyphen only.</p>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600">Base Price</label>
-            <input
-              value={value.baseprice}
-              onChange={(e) => setField('baseprice', numSanitize(e.target.value))}
-              inputMode="decimal"
-              placeholder="0"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600">Time Price</label>
-            <input
-              value={value.timeprice}
-              onChange={(e) => setField('timeprice', numSanitize(e.target.value))}
-              inputMode="decimal"
-              placeholder="0"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600">Distance Price</label>
-            <input
-              value={value.distaceprice}
-              onChange={(e) => setField('distaceprice', numSanitize(e.target.value))}
-              inputMode="decimal"
-              placeholder="0"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600">Platform Fees (%)</label>
-            <input
-              value={value.plateformfees}
-              onChange={(e) => setField('plateformfees', numSanitize(e.target.value))}
-              inputMode="decimal"
-              placeholder="0"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600">Cancel Price</label>
-            <input
-              value={value.cancelprice}
-              onChange={(e) => setField('cancelprice', numSanitize(e.target.value))}
-              inputMode="decimal"
-              placeholder="0"
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
+          {[
+            { label: 'Vehicle Type', key: 'VehicalType', placeholder: 'e.g., Mini, Sedan', transform: onlyLetters },
+            { label: 'Base Price', key: 'baseprice' },
+            { label: 'Time Price', key: 'timeprice' },
+            { label: 'Distance Price', key: 'distaceprice' },
+            { label: 'Platform Fees (%)', key: 'plateformfees' },
+            { label: 'Cancel Price', key: 'cancelprice' },
+          ].map((f) => (
+            <div key={f.key}>
+              <label className="text-xs font-medium text-gray-600">{f.label}</label>
+              <input
+                value={value[f.key]}
+                onChange={(e) =>
+                  setField(f.key, f.transform ? f.transform(e.target.value) : numSanitize(e.target.value))
+                }
+                placeholder={f.placeholder || '0'}
+                inputMode="decimal"
+                className="w-full border rounded-lg px-4 py-2"
+              />
+            </div>
+          ))}
         </div>
 
         <div className="p-4 border-t flex justify-end gap-2">
@@ -234,7 +196,8 @@ function VehicleFormModal({ open, mode, value, onChange, onClose, onSubmit, load
   );
 }
 
-export default function BankTypeManagementPage() {
+// ---------- Main Component ----------
+export default function FareManagementPage() {
   const [vehicleData, setVehicleData] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState('');
@@ -249,15 +212,14 @@ export default function BankTypeManagementPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState('add');
-  const emptyForm = {
+  const [formData, setFormData] = useState({
     VehicalType: '',
     baseprice: '',
     timeprice: '',
     distaceprice: '',
     plateformfees: '',
     cancelprice: '',
-  };
-  const [formData, setFormData] = useState(emptyForm);
+  });
   const [editingItem, setEditingItem] = useState(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -283,7 +245,14 @@ export default function BankTypeManagementPage() {
 
   const openAdd = () => {
     setFormMode('add');
-    setFormData(emptyForm);
+    setFormData({
+      VehicalType: '',
+      baseprice: '',
+      timeprice: '',
+      distaceprice: '',
+      plateformfees: '',
+      cancelprice: '',
+    });
     setEditingItem(null);
     setFormOpen(true);
   };
@@ -411,33 +380,34 @@ export default function BankTypeManagementPage() {
         ) : rows.length === 0 ? (
           <div className="text-center py-12 text-gray-500">No Vehicles Found</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200 text-sm text-center">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2">S.No.</th>
-                <th className="px-4 py-2">Vehicle Type</th>
-                <th className="px-4 py-2">Base Price</th>
-                <th className="px-4 py-2">Time Price</th>
-                <th className="px-4 py-2">Distance Price</th>
-                <th className="px-4 py-2">PlateFormFees(%)</th>
-                <th className="px-4 py-2">Cancel Price</th>
-                <th className="px-4 py-2">Edit</th>
-                <th className="px-4 py-2">Delete</th>
-                <th className="px-4 py-2">Change Status</th>
+          <table className="min-w-full border border-gray-200 text-sm text-center rounded-lg overflow-hidden">
+            <thead className="bg-gray-100">
+              <tr className="text-gray-700 font-semibold">
+                <th className="px-6 py-4">S.No.</th>
+                <th className="px-6 py-4">Vehicle Type</th>
+                <th className="px-6 py-4">Base Price</th>
+                <th className="px-6 py-4">Time Price</th>
+                <th className="px-6 py-4">Distance Price</th>
+                <th className="px-6 py-4">Platform Fees (%)</th>
+                <th className="px-6 py-4">Cancel Price</th>
+                <th className="px-6 py-4">Edit</th>
+                <th className="px-6 py-4">Delete</th>
+                <th className="px-6 py-4">Change Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {rows.map((b, i) => (
-                <tr key={b?._id || b?.id || `${b?.VehicalType}-${i}`}>
-                  <td>{i + 1}</td>
-                  <td className="font-medium">{b?.VehicalType}</td>
-                  <td>{b?.baseprice || 0}</td>
-                  <td>{b?.timeprice || 0}</td>
-                  <td>{b?.distaceprice || 0}</td>
-                  <td>{b?.plateformfees || 0} %</td>
-                  <td>{b?.cancelprice || 0}</td>
 
-                  <td>
+            <tbody className="divide-y divide-gray-100 text-gray-800">
+              {rows.map((b, i) => (
+                <tr key={b?._id || `${b?.VehicalType}-${i}`} className="hover:bg-gray-50 transition-colors duration-200">
+                  <td className="px-6 py-4">{i + 1}</td>
+                  <td className="font-medium px-6 py-4">{b?.VehicalType}</td>
+                  <td className="px-6 py-4">{b?.baseprice || 0}</td>
+                  <td className="px-6 py-4">{b?.timeprice || 0}</td>
+                  <td className="px-6 py-4">{b?.distaceprice || 0}</td>
+                  <td className="px-6 py-4">{b?.plateformfees || 0} %</td>
+                  <td className="px-6 py-4">{b?.cancelprice || 0}</td>
+
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => openEdit(b)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg 
@@ -448,7 +418,7 @@ export default function BankTypeManagementPage() {
                     </button>
                   </td>
 
-                  <td>
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => handleDelete(b)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg 
@@ -459,13 +429,11 @@ export default function BankTypeManagementPage() {
                     </button>
                   </td>
 
-                  <td>
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => handleToggle(b)}
                       role="switch"
                       aria-checked={Boolean(b?.status)}
-                      aria-label={b?.status ? 'Active' : 'Inactive'}
-                      title={b?.status ? 'Active' : 'Inactive'}
                       className={`relative inline-flex h-7 w-[52px] items-center rounded-full transition-all duration-300
                         ${b?.status ? 'bg-gradient-to-r from-emerald-500 to-emerald-600'
                                     : 'bg-gradient-to-r from-rose-500 to-rose-600'}`}

@@ -3,7 +3,6 @@ import { getTokenFromCookies } from './getTokenFromCookies';
 
 export async function authorizedFetch(path, options = {}) {
   const token = getTokenFromCookies();
-
   const isFormData = options.body instanceof FormData;
 
   const headers = {
@@ -16,6 +15,7 @@ export async function authorizedFetch(path, options = {}) {
     ...options,
     headers,
   });
+  console.log("authorizedFetch token check--------------------"  ,res)
 
   // If the response is not JSON (e.g. empty body), handle gracefully
   let data;
@@ -24,7 +24,16 @@ export async function authorizedFetch(path, options = {}) {
   } catch {
     data = null;
   }
-
+  // 🔐 If unauthorized — redirect to login
+  if (res.status === 401 || res.status === 403) {
+    console.warn('Unauthorized — redirecting to login...');
+    // Clear token cookie if needed
+    if (typeof document !== 'undefined') {
+      document.cookie = 'token=; Max-Age=0; path=/;';
+      window.location.href = '/'; // 👈 Redirect user to login page
+    }
+    throw new Error('Unauthorized. Redirecting to login...');
+  }
   if (!res.ok) throw new Error(data?.message || 'Request failed');
 
   return data;
