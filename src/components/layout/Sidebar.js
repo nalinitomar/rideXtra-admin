@@ -19,6 +19,7 @@ import {
   FaUniversity,
   FaWallet,
   FaUserTie,
+  FaRegCommentDots 
 } from "react-icons/fa";
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -31,6 +32,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { href: "/driver-management", label: "Driver Management", icon: FaUserTie },
     { href: "/ride-management", label: "Ride History Management", icon: FiClock },
     { href: "/bus-management", label: "Bus Booking Management", icon: FaBus },
+    // { href: "/tickat-management", label: "Tickets", icon: FaRegCommentDots  },
   ];
 
   const hubGroup = {
@@ -165,7 +167,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
             {/* Keep Help Support just before the bottom gap (always last link) */}
             <div className="pt-2">
-              <NavItem href="/help-support" label="Help Support" Icon={FiMessageSquare} />
+              <NavItem href="/ticket" label="Help Support" Icon={FiMessageSquare} />
             </div>
 
             {/* bottom spacer so last link doesn't hide behind sticky footer */}

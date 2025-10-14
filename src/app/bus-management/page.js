@@ -142,7 +142,7 @@ export default function UserManagementPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Ride Management</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Bus Booking Management</h2>
             <p className="text-sm text-gray-500 mt-1">
               {isLoading ? "Loading..." : `Showing ${users.length} users${isSearching ? ' (search results)' : ''}`}
             </p>

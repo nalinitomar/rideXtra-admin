@@ -1,28 +1,30 @@
 'use client';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { API_BASE_URL } from '@/lib/apiConfig';
-import { authorizedFetch } from '@/lib/apiClient'
+import { authorizedFetch } from '@/lib/apiClient';
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const router = useRouter();
 
+  // ✅ Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('auth-user');
-
     if (storedUser) {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        setUser(JSON.parse(storedUser));
       } catch (err) {
         console.error('Failed to parse auth-user from localStorage', err);
-        localStorage.removeItem('auth-user'); // clean it up if corrupted
+        localStorage.removeItem('auth-user');
       }
     }
   }, []);
 
+  // ✅ Login Function
   const login = async ({ email, password }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/login`, {
@@ -31,67 +33,61 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!res.status) {
-        throw new Error('Invalid credentials');
-      }
-
       const resData = await res.json();
+      console.log('resData ========', resData);
 
-      const { Id, Token } = resData.data;
+      if (resData.statusCode === 200 || resData.status === true) {
+        const { Id, Token } = resData.data;
+        const userInfo = { id: Id, email };
 
-      // Call /getprofile using accessToken
-      // const profileRes = await fetch(`${API_BASE_URL}/agent/getpofile`, {
-      //   method: 'GET',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${Token}`,
-      //   },
-      // });
+        // Save auth data
+        localStorage.setItem('auth-user', JSON.stringify(userInfo));
+        document.cookie = `auth-token=${Token}; path=/`;
+        setUser(userInfo);
 
-      // if (!profileRes.ok) {
-      //   throw new Error('Failed to fetch profile');
-      // }
-
-      // const profileData = await profileRes.json();
-
-      const userInfo = {
-        id: Id,
-        email,
-        // profile: profileData.data, // assuming profile is under .data
-      };
-
-      localStorage.setItem('auth-user', JSON.stringify(userInfo));
-      document.cookie = `auth-token=${Token}; path=/`;
-
-      setUser(userInfo);
-      router.push('/dashboard');
+        // ✅ Show success toast
+        toast.success('Signed in successfully 🎉');
+        router.push('/dashboard');
+      } else {
+        toast.error('Invalid credentials 😕');
+        // throw new Error('Invalid credentials');
+      }
     } catch (error) {
+      console.error('Login Error:', error);
+      toast.error('Login failed. Please try again.');
       throw error;
     }
   };
 
+  // ✅ Logout Function
   const logout = async () => {
-    const logoutRes = await authorizedFetch(`/admin/logout`, {
-      method: "POST",
-    });
-    console.log("logoutRes", logoutRes)
+    try {
+      const logoutRes = await authorizedFetch(`/admin/logout`, {
+        method: 'POST',
+      });
 
-    if (logoutRes.statusCode === 200 && logoutRes.status === true) {
-      document.cookie = 'auth-token=; Max-Age=0; path=/';
-      localStorage.removeItem('auth-user');
-      setUser(null);
-      router.push('/');
+      if (logoutRes.statusCode === 200 && logoutRes.status === true) {
+        // Clear everything
+        document.cookie = 'auth-token=; Max-Age=0; path=/';
+        localStorage.removeItem('auth-user');
+        setUser(null);
+
+        toast.success('Logged out successfully 👋');
+        router.push('/');
+      } else {
+        toast.error('Logout failed 😕');
+      }
+    } catch (err) {
+      console.error('Logout Error:', err);
+      toast.error('Something went wrong during logout.');
     }
-    else {
-      console.log('error')
-      return
-    }
-  }
-    return (
-      <AuthContext.Provider value={{ user, login, logout }}>
-        {children}
-      </AuthContext.Provider>
-    );
   };
 
-  export const useAuth = () => useContext(AuthContext);
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);

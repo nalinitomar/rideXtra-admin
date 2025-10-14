@@ -26,7 +26,8 @@ export default function LoginPage() {
         return;
       }
 
-      await login({ email, password });
+     const Login  = await login({ email, password });
+     console.log("login=========" ,Login )
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {

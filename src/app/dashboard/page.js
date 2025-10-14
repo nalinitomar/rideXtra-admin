@@ -288,7 +288,7 @@ export default function RiderAdminDashboard() {
                         {order.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{fmtINR(order?.fareDetails?.totalFare || order?.payment?.amount || 0)}</td>
+                    <td className="px-4 py-3">{`${order?.fareDetails?.totalFare || order?.payment?.amount || 0} $` }</td>
                     <td className="px-4 py-3">{new Date(order.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))
