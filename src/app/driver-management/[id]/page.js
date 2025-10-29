@@ -35,107 +35,107 @@ import { FaBuilding, FaCar, FaRegFileAlt } from "react-icons/fa";
 /* ===== Helpers for Recent Reviews ===== */
 
 const timeAgo = (iso) => {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    const diffMs = Date.now() - d.getTime();
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
-    const years = Math.floor(months / 12);
-    return `${years}y ago`;
-  } catch {
-    return '';
-  }
+    if (!iso) return '';
+    try {
+        const d = new Date(iso);
+        const diffMs = Date.now() - d.getTime();
+        const mins = Math.floor(diffMs / 60000);
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        if (days < 30) return `${days}d ago`;
+        const months = Math.floor(days / 30);
+        if (months < 12) return `${months}mo ago`;
+        const years = Math.floor(months / 12);
+        return `${years}y ago`;
+    } catch {
+        return '';
+    }
 };
 
 const ReviewRow = ({ review, isExpanded, onToggle }) => {
-  const rounded = Math.round(review?.rating ?? 0); // 1..5
-  const comment = review?.comment || '';
-  const LONG = 120;
-  const showToggle = comment.length > LONG;
-  const displayText = isExpanded ? comment : comment.slice(0, LONG) + (showToggle ? '…' : '');
-  const stamp = review?.updatedAt || review?.createdAt;
+    const rounded = Math.round(review?.rating ?? 0); // 1..5
+    const comment = review?.comment || '';
+    const LONG = 120;
+    const showToggle = comment.length > LONG;
+    const displayText = isExpanded ? comment : comment.slice(0, LONG) + (showToggle ? '…' : '');
+    const stamp = review?.updatedAt || review?.createdAt;
 
-  // Initial letter for avatar
-  const initial = (comment?.trim()?.charAt(0) || 'R').toUpperCase();
+    // Initial letter for avatar
+    const initial = (comment?.trim()?.charAt(0) || 'R').toUpperCase();
 
-  return (
-    <div className="flex items-start">
-      <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-        <span className="text-xs font-medium text-indigo-600">{initial}</span>
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center mb-1">
-          <div className="flex mr-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <FiStar
-                key={star}
-                className={`h-3 w-3 ${star <= rounded ? 'text-amber-400' : 'text-gray-300'}`}
-                fill={star <= rounded ? 'currentColor' : 'none'}
-              />
-            ))}
-          </div>
-          {stamp && <span className="text-xs text-gray-500">{timeAgo(stamp)}</span>}
+    return (
+        <div className="flex items-start">
+            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="text-xs font-medium text-indigo-600">{initial}</span>
+            </div>
+            <div className="flex-1">
+                <div className="flex items-center mb-1">
+                    <div className="flex mr-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                            <FiStar
+                                key={star}
+                                className={`h-3 w-3 ${star <= rounded ? 'text-amber-400' : 'text-gray-300'}`}
+                                fill={star <= rounded ? 'currentColor' : 'none'}
+                            />
+                        ))}
+                    </div>
+                    {stamp && <span className="text-xs text-gray-500">{timeAgo(stamp)}</span>}
+                </div>
+                <p className="text-sm text-gray-700">
+                    {displayText}{' '}
+                    {showToggle && (
+                        <button
+                            onClick={onToggle}
+                            className="ml-1 text-indigo-600 text-xs font-medium hover:underline"
+                        >
+                            {isExpanded ? 'See less' : 'See more'}
+                        </button>
+                    )}
+                </p>
+            </div>
         </div>
-        <p className="text-sm text-gray-700">
-          {displayText}{' '}
-          {showToggle && (
-            <button
-              onClick={onToggle}
-              className="ml-1 text-indigo-600 text-xs font-medium hover:underline"
-            >
-              {isExpanded ? 'See less' : 'See more'}
-            </button>
-          )}
-        </p>
-      </div>
-    </div>
-  );
+    );
 };
 
 const RecentReviewsCard = ({ driverState }) => {
-  const [expanded, setExpanded] = useState({});
-  const reviews = useMemo(() => {
-    const arr = driverState?.recentReviews || [];
-    const sorted = [...arr].sort((a, b) => {
-      const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const db = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return db - da;
-    });
-    return sorted.slice(0, 2);
-  }, [driverState]);
+    const [expanded, setExpanded] = useState({});
+    const reviews = useMemo(() => {
+        const arr = driverState?.recentReviews || [];
+        const sorted = [...arr].sort((a, b) => {
+            const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
+            const db = new Date(b.updatedAt || b.createdAt || 0).getTime();
+            return db - da;
+        });
+        return sorted.slice(0, 2);
+    }, [driverState]);
 
-  const toggleExpand = (orderId) =>
-    setExpanded((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
+    const toggleExpand = (orderId) =>
+        setExpanded((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
 
-  return (
-    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-800">Recent Reviews</h3>
-      </div>
+    return (
+        <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">Recent Reviews</h3>
+            </div>
 
-      {reviews.length === 0 ? (
-        <p className="text-sm text-gray-500">No recent reviews.</p>
-      ) : (
-        <div className="space-y-3">
-          {reviews.map((r) => (
-            <ReviewRow
-              key={r.orderId || Math.random()}
-              review={r}
-              isExpanded={!!expanded[r.orderId]}
-              onToggle={() => toggleExpand(r.orderId)}
-            />
-          ))}
+            {reviews.length === 0 ? (
+                <p className="text-sm text-gray-500">No recent reviews.</p>
+            ) : (
+                <div className="space-y-3">
+                    {reviews.map((r) => (
+                        <ReviewRow
+                            key={r.orderId || Math.random()}
+                            review={r}
+                            isExpanded={!!expanded[r.orderId]}
+                            onToggle={() => toggleExpand(r.orderId)}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
 /* ===== Page Component ===== */
@@ -908,25 +908,25 @@ export default function DriverProfilePage() {
 
                                     {/* Recent Reviews + Financial side-by-side */}
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                                      {/* Recent Reviews (dynamic, 2 most recent with see more) */}
-                                      <RecentReviewsCard driverState={driverState} />
+                                        {/* Recent Reviews (dynamic, 2 most recent with see more) */}
+                                        <RecentReviewsCard driverState={driverState} />
 
-                                      {/* Financial Information (unchanged content) */}
-                                      <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-                                          <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
-                                              <FiDollarSign className="mr-2 text-indigo-600" /> Financial Information
-                                          </h3>
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                                  <p className="text-sm text-indigo-700 mb-1">Wallet Balance</p>
-                                                  <p className="text-2xl font-bold text-indigo-900">{getSafeValue(driver.Wallet, 0)}</p>
-                                              </div>
-                                              <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                                                  <p className="text-sm text-amber-700 mb-1">Daily Wallet</p>
-                                                  <p className="text-2xl font-bold text-amber-900">{getSafeValue(driver.DailyWallet, 0)}</p>
-                                              </div>
-                                          </div>
-                                      </div>
+                                        {/* Financial Information (unchanged content) */}
+                                        <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+                                                <FiDollarSign className="mr-2 text-indigo-600" /> Financial Information
+                                            </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                                    <p className="text-sm text-indigo-700 mb-1">Wallet Balance</p>
+                                                    <p className="text-2xl font-bold text-indigo-900">{getSafeValue(driver.Wallet, 0)}</p>
+                                                </div>
+                                                <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                                                    <p className="text-sm text-amber-700 mb-1">Daily Wallet</p>
+                                                    <p className="text-2xl font-bold text-amber-900">{getSafeValue(driver.DailyWallet, 0)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1104,13 +1104,18 @@ export default function DriverProfilePage() {
                                                     <div className="border rounded-lg overflow-hidden">
                                                         <div className="relative h-48 bg-gray-100">
                                                             <Image
-                                                                src={`${IMAGE_URL}${driver.drivinglicense}`}
+                                                                src={driver?.drivinglicense || "https://t4.ftcdn.net/jpg/06/16/17/77/360_F_616177772_bEXNr996NEmDliBSma3dRNloodTYR3cN.jpg"}
                                                                 alt="Driving License"
                                                                 fill
-                                                                className="object-width"
+                                                                className="object-cover"
+                                                                onError={(e) => {
+                                                                    e.currentTarget.src = "https://t4.ftcdn.net/jpg/06/16/17/77/360_F_616177772_bEXNr996NEmDliBSma3dRNloodTYR3cN.jpg";
+                                                                }}
                                                             />
                                                         </div>
                                                     </div>
+
+
 
 
                                                     {/* Status & View Button */}

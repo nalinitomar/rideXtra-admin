@@ -17,23 +17,23 @@ const nextConfig = {
       // PROD: your real domain (allow both HTTP and HTTPS)
       {
         protocol: 'http',
-        hostname: 'mobileappindia.com',
+        hostname: '34.131.104.9',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'mobileappindia.com',
+        hostname: '34.131.104.9',
         pathname: '/**',
       },
       // (Optional) www host
       {
         protocol: 'http',
-        hostname: 'www.mobileappindia.com',
+        hostname: '34.131.104.9',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'www.mobileappindia.com',
+        hostname: '34.131.104.9',
         pathname: '/**',
       },
 
