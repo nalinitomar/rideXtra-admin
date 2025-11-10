@@ -34,6 +34,14 @@ export async function getticketById(id) {
   });
 }
 
+export async function AssignBusDriver(Data) {
+  return authorizedFetch(`/admin/assisgn-bus`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Data),
+  });
+}
+
 
 export async function ChangeStatus(id, status) {
   return authorizedFetch(`/admin/change-ticket-status`, {

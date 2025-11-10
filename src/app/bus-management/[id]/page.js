@@ -1,7 +1,7 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getrideById } from '@/services/rideManagementService '; // ensure no trailing space
+import { getrideById, AssignBusDriver } from '@/services/rideManagementService ';
 import {
   FiArrowLeft,
   FiMapPin,
@@ -33,7 +33,11 @@ export default function RideDetailsPage() {
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' });
   const [copied, setCopied] = useState('');
 
-  // ------- helpers -------
+  // new state for modal
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ busNumber: '', driverName: '', contact: '' });
+  const [submitting, setSubmitting] = useState(false);
+
   const getSafe = (v, fb = '—') => (v !== undefined && v !== null && v !== '' ? v : fb);
 
   const formatDate = (iso) => {
@@ -47,7 +51,7 @@ export default function RideDetailsPage() {
 
   const formatTime = (val) => {
     if (!val) return '—';
-    if (typeof val === 'string' && (val.includes('AM') || val.includes('PM'))) return val; // already formatted
+    if (typeof val === 'string' && (val.includes('AM') || val.includes('PM'))) return val;
     try {
       const t = String(val);
       const parts = t.split('T')[1]?.split(':');
@@ -129,7 +133,6 @@ export default function RideDetailsPage() {
     }
   }, [id]);
 
-  // ------- visibility rules (strict) -------
   const statusNormalized = (trip?.status ?? '').toString().trim().toLowerCase();
   const isCompleted = statusNormalized === 'completed';
 
@@ -139,18 +142,12 @@ export default function RideDetailsPage() {
     trip.driverId !== null &&
     !!(trip.driverId._id && String(trip.driverId._id).trim().length > 0);
 
-  // Always:
   const showCustomerInfo = true;
   const showLocation = true;
-  // Conditional:
   const showDriverInfo = driverAssigned || isCompleted;
   const showVehicle = driverAssigned || isCompleted;
   const showFareAndPayment = isCompleted;
 
-  // Optional one-time debug:
-  // console.table({ status: trip?.status, statusNormalized, isCompleted, driverAssigned });
-
-  // ------- UI -------
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -179,8 +176,38 @@ export default function RideDetailsPage() {
     );
   }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.busNumber || !form.driverName || !form.contact) {
+      showSnackbar('All fields are required', 'error');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await AssignBusDriver({
+        OrderId: id,
+        BusNumber: form.busNumber,
+        driverName: form.driverName,
+        contact: form.contact,
+        SeatNo: form.SeatNo,
+      });
+      if (res?.statusCode === 200) {
+        showSnackbar('Bus driver assigned successfully!');
+        setShowModal(false);
+      } else {
+        showSnackbar(res?.message || 'Failed to assign driver', 'error');
+      }
+    } catch (err) {
+      showSnackbar('Something went wrong', 'error');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ------- UI -------
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 relative">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
@@ -192,23 +219,34 @@ export default function RideDetailsPage() {
               <FiArrowLeft className="mr-1" /> Back
             </button>
 
-            <div className="ml-auto pr-6 py-4 text-sm text-gray-600">
-              <span className="mr-3">Status:</span>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  isCompleted
-                    ? 'bg-green-100 text-green-700'
-                    : statusNormalized === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
+            <div className="ml-auto pr-6 py-4 text-sm text-gray-600 flex items-center gap-4">
+              <div>
+                <span className="mr-2">Status:</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    isCompleted
+                      ? 'bg-green-100 text-green-700'
+                      : statusNormalized === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {trip.status || '—'}
+                </span>
+              </div>
+
+              {/* Assign Button */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition"
               >
-                {trip.status || '—'}
-              </span>
+                Assign Bus Driver
+              </button>
             </div>
           </div>
 
-          <div className="p-6">
+          {/* your full existing content below remains same */}
+<div className="p-6">
             {/* Row 1: Customer (always) + Driver (conditional) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               {/* Customer Information — ALWAYS */}
@@ -567,9 +605,79 @@ export default function RideDetailsPage() {
               </div>
             )}
             {/* end Fare+Payment */}
+          </div>        </div>
+      </div>
+
+      {/* --- Modal Form --- */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-md">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Assign Bus Driver</h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bus Number</label>
+                <input
+                  type="text"
+                  value={form.busNumber}
+                  onChange={(e) => setForm({ ...form, busNumber: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Enter Bus Number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Driver Name</label>
+                <input
+                  type="text"
+                  value={form.driverName}
+                  onChange={(e) => setForm({ ...form, driverName: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Enter Driver Name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seat Number</label>
+                <input
+                  type="text"
+                  value={form.SeatNo}
+                  onChange={(e) => setForm({ ...form, SeatNo: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Enter Seat Number"
+                />
+              </div>
+               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <input
+                  type="text"
+                  value={form.contact}
+                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  placeholder="Enter Contact Number"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`px-4 py-2 rounded-lg font-medium text-white ${
+                    submitting ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {submitting ? 'Assigning...' : 'Assign'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
 
       <Snackbar
         visible={snackbar.visible}
