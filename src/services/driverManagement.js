@@ -45,7 +45,6 @@ export async function getAllUserTripById(id ,page = null, limit = null, filter =
 
 
 export async function changeStatus(id, action, reason) {
-  console.log("api call ->", id, action , reason);
 
   let body = { id };
 
@@ -69,6 +68,7 @@ export async function changeStatus(id, action, reason) {
 
   // Handle verify / unverify
   if (action === "verify") {
+    console.log("action==============================" , action)
     return authorizedFetch(`/admin/verify-by-admin`, {
       method: "POST",
       body: JSON.stringify({

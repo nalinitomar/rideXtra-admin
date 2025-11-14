@@ -299,20 +299,24 @@ export default function DriverProfilePage() {
 
             // 👇 pass array instead of string
             const Status = await changeStatus(id, actionType, selectedReasons);
-
+            console.log("new driver side clone", actionType)
             if (Status.statusCode === 200 && Status.status === true) {
                 fetchDriver()
                 showSnackbar(
-                    actionType === 'unverify'
-                        ? 'Documents unverified successfully'
-                        : `Driver ${actionType === 'block'
-                            ? 'blocked'
-                            : actionType === 'unblock'
-                                ? 'unblocked'
-                                : 'deleted'
-                        } successfully`,
-                    'success'
+                    actionType === "verify"
+                        ? "Documents verified successfully"
+                        : actionType === "unverify"
+                            ? "Documents unverified successfully"
+                            : actionType === "block"
+                                ? "Driver blocked successfully"
+                                : actionType === "unblock"
+                                    ? "Driver unblocked successfully"
+                                    : actionType === "delete"
+                                        ? "Driver deleted successfully"
+                                        : "Action completed",
+                    "success"
                 );
+
             }
 
         } catch (error) {
