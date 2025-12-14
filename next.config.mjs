@@ -20,9 +20,9 @@ const nextConfig = {
     ],
   },
 
-  // App is served under sub-path
-  basePath: '/RideXtra',
-  assetPrefix: '/RideXtra/',
+  // // App is served under sub-path
+  // basePath: '/RideXtra',
+  // assetPrefix: '/RideXtra/',
 };
 
 export default nextConfig;
