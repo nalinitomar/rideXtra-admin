@@ -13,8 +13,8 @@ const nextConfig = {
       // Production (VM External IP)
       {
         protocol: 'http',
-        hostname: '34.42.94.254',
-        port: '8082', // IMPORTANT if images come from backend
+        hostname: '34.46.179.143',
+        port: '3030', // IMPORTANT if images come from backend
         pathname: '/**',
       },
     ],
