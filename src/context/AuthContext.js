@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }) => {
 
       if (resData.statusCode === 200 || resData.status === true) {
         const { Id, Token } = resData.data;
+        console.log('Login Success:', resData.data);
         const userInfo = { id: Id, email };
 
         // Save auth data

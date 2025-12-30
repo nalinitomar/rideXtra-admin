@@ -260,7 +260,7 @@ export default function UserManagementPage() {
                           {data?.isBlocked ? 'Inactive' : 'Active'}
                         </span>
                       </td>
-                     
+
 
                       <td className="px-4 py-3">
                         <Link
